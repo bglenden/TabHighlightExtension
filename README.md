@@ -2,17 +2,20 @@
 
 A lightweight Chrome extension that adds a visual indicator to your active tab, making it easy to identify which tab you're currently viewing.
 
+**Version**: 1.1.0 | **GitHub**: https://github.com/bglenden/TabHighlightExtension
+
 ## Why This Extension?
 
 When you have many tabs open, it can be difficult to quickly identify the active tab - especially when you want to close it after reading. This extension solves that problem by adding a bright 🟢 green circle to the active tab's title, making it instantly visible in your tab bar.
 
 ## Features
 
-- **Visual Indicator**: Adds 🟢 to the active tab's title
-- **Automatic Updates**: Indicator appears/disappears as you switch tabs
-- **Lightweight**: Minimal resource usage, no performance impact
+- **Title Indicator**: Adds 🟢 to the end of the active tab's title
+- **Favicon Replacement**: Replaces the site's favicon with a green circle
+- **Automatic Updates**: Indicators appear/disappear as you switch tabs
+- **Lightweight**: Minimal resource usage (2.17 KiB), no performance impact
 - **Privacy-Focused**: No data collection, tracking, or external requests
-- **Works Everywhere**: Runs on all websites automatically
+- **Works Everywhere**: Runs on all websites automatically (except Chrome internal pages)
 
 ## Installation
 
@@ -72,22 +75,25 @@ GitHub - Repository
 
 ### Build Commands
 
-- `npm run build` - Build for production (minified)
+- `npm run build` - Build for production (minified, 2.17 KiB)
 - `npm run dev` - Build in development mode with auto-rebuild on changes
 - `npm run clean` - Remove build output
+- `npm run lint` - Check code quality with ESLint
+- `npm run lint:fix` - Auto-fix linting issues
 
 ### Project Structure
 
 ```
 /TabHighlightExtension
 ├── src/
-│   └── content.ts          # Main extension logic
+│   └── content.ts          # Main extension logic (156 lines)
 ├── dist/                    # Build output (load this in Chrome)
 ├── icons/                   # Extension icons
 ├── manifest.json           # Chrome extension manifest
 ├── package.json            # Dependencies and scripts
 ├── tsconfig.json           # TypeScript configuration
-└── webpack.config.js       # Build configuration
+├── webpack.config.cjs      # Build configuration
+└── eslint.config.js        # Code quality configuration
 ```
 
 ### Making Changes
@@ -112,13 +118,16 @@ The extension uses a content script that:
 1. Runs on every webpage
 2. Listens for tab visibility changes using the Page Visibility API
 3. Adds/removes the 🟢 indicator from the document title
-4. Handles dynamic title changes from the page itself
+4. Replaces the site's favicon with a green circle (with 500ms enforcement)
+5. Handles dynamic title changes from the page itself
 
 **Key Features:**
 - Event-driven (no polling)
 - Minimal performance impact
 - No special permissions required
-- Works on all websites
+- Works on all websites (except Chrome internal pages like `chrome://`)
+
+**Note**: Chrome's security model prevents extensions from running on internal pages (`chrome://extensions/`, `chrome://newtab/`, etc.). This is a browser limitation, not a bug.
 
 ## Privacy
 
@@ -135,6 +144,8 @@ This extension:
 - **Edge**: Version 88+ (Chromium-based)
 - **Brave**: Latest version
 - **Other Chromium browsers**: Should work, but not tested
+
+**Limitations**: Cannot run on Chrome internal pages (`chrome://`, Chrome Web Store) due to browser security restrictions.
 
 ## Troubleshooting
 
@@ -166,7 +177,9 @@ MIT License - See LICENSE file for details
 ## Acknowledgments
 
 Built with:
-- TypeScript
-- Webpack
+- TypeScript 5.4+
+- Webpack 5
+- ESLint 9
 - Chrome Extension Manifest V3
 - Page Visibility API
+- MutationObserver API
