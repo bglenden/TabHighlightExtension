@@ -1,6 +1,6 @@
 {
   "name": "tab-highlight-extension",
-  "version": "1.0.7",
+  "version": "1.1.1",
   "description": "Chrome extension that highlights the active tab with a visual indicator",
   "type": "module",
   "scripts": {

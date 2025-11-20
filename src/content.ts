@@ -6,10 +6,11 @@
  */
 
 // The indicator to append to the title
-const INDICATOR = ' 🟢';
+const INDICATOR = " 🟢";
 
 // Green circle favicon as data URI (16x16 PNG)
-const GREEN_FAVICON = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="%234CAF50"/></svg>';
+const GREEN_FAVICON =
+  'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="%234CAF50"/></svg>';
 
 // Store the original title and favicon to restore them when tab becomes inactive
 let originalTitle: string = document.title;
@@ -18,11 +19,37 @@ let isIndicatorActive: boolean = false;
 let faviconCheckInterval: number | null = null;
 
 /**
+ * Logs debug information about current favicon state
+ */
+function logFaviconState(context: string): void {
+  const allFavicons = getAllFaviconElements();
+  const ourFavicon = document.querySelector(
+    'link[data-tab-highlighter="true"]',
+  );
+
+  console.log(`[Tab Highlighter] ${context}`, {
+    isIndicatorActive,
+    documentHidden: document.hidden,
+    documentTitle: document.title,
+    originalTitle,
+    originalFavicon,
+    faviconCount: allFavicons.length,
+    hasOurFavicon: !!ourFavicon,
+    faviconDetails: allFavicons.map((f) => ({
+      href: f.href.substring(0, 50) + (f.href.length > 50 ? "..." : ""),
+      rel: f.rel,
+      isOurs: f.hasAttribute("data-tab-highlighter"),
+    })),
+    intervalActive: faviconCheckInterval !== null,
+  });
+}
+
+/**
  * Gets all favicon link elements
  */
 function getAllFaviconElements(): HTMLLinkElement[] {
   return Array.from(
-    document.querySelectorAll<HTMLLinkElement>('link[rel*="icon"]')
+    document.querySelectorAll<HTMLLinkElement>('link[rel*="icon"]'),
   );
 }
 
@@ -30,13 +57,11 @@ function getAllFaviconElements(): HTMLLinkElement[] {
  * Gets the current favicon link element or creates one if it doesn't exist
  */
 function getFaviconElement(): HTMLLinkElement {
-  let favicon = document.querySelector<HTMLLinkElement>(
-    'link[rel*="icon"]'
-  );
+  let favicon = document.querySelector<HTMLLinkElement>('link[rel*="icon"]');
 
   if (!favicon) {
-    favicon = document.createElement('link');
-    favicon.rel = 'icon';
+    favicon = document.createElement("link");
+    favicon.rel = "icon";
     document.head.appendChild(favicon);
   }
 
@@ -47,47 +72,71 @@ function getFaviconElement(): HTMLLinkElement {
  * Replaces ALL favicons with a green circle
  */
 function setGreenFavicon(): void {
+  // Temporarily disconnect observer to prevent our changes from triggering it
+  faviconObserver.disconnect();
+
   // Get all existing favicon elements
   const allFavicons = getAllFaviconElements();
 
   // Store original favicon if not already stored
   if (originalFavicon === null && allFavicons.length > 0) {
-    originalFavicon = allFavicons[0].href || '';
+    originalFavicon = allFavicons[0].href || "";
   }
 
   // Remove all existing favicons
-  allFavicons.forEach(fav => fav.remove());
+  allFavicons.forEach((fav) => fav.remove());
 
   // Create our green favicon
-  const favicon = document.createElement('link');
-  favicon.rel = 'icon';
+  const favicon = document.createElement("link");
+  favicon.rel = "icon";
   favicon.href = GREEN_FAVICON;
-  favicon.type = 'image/svg+xml';
-  favicon.setAttribute('data-tab-highlighter', 'true');
+  favicon.type = "image/svg+xml";
+  favicon.setAttribute("data-tab-highlighter", "true");
   document.head.appendChild(favicon);
+
+  // Reconnect observer after our changes are complete
+  faviconObserver.observe(document.head, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["href"],
+  });
 }
 
 /**
  * Restores the original favicon
  */
 function restoreOriginalFavicon(): void {
+  // Temporarily disconnect observer to prevent our changes from triggering it
+  faviconObserver.disconnect();
+
   // Remove our green favicon
-  const ourFavicon = document.querySelector('link[data-tab-highlighter="true"]');
+  const ourFavicon = document.querySelector(
+    'link[data-tab-highlighter="true"]',
+  );
   if (ourFavicon) {
     ourFavicon.remove();
   }
 
   // Remove any other existing favicons
   const allFavicons = getAllFaviconElements();
-  allFavicons.forEach(fav => fav.remove());
+  allFavicons.forEach((fav) => fav.remove());
 
   // Restore the original favicon if we have one
-  if (originalFavicon !== null && originalFavicon !== '') {
-    const favicon = document.createElement('link');
-    favicon.rel = 'icon';
+  if (originalFavicon !== null && originalFavicon !== "") {
+    const favicon = document.createElement("link");
+    favicon.rel = "icon";
     favicon.href = originalFavicon;
     document.head.appendChild(favicon);
   }
+
+  // Reconnect observer after our changes are complete
+  faviconObserver.observe(document.head, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["href"],
+  });
 }
 
 /**
@@ -99,12 +148,17 @@ function startFaviconEnforcement(): void {
     faviconCheckInterval = window.setInterval(() => {
       if (isIndicatorActive && !document.hidden) {
         // Check if our favicon still exists
-        const ourFavicon = document.querySelector('link[data-tab-highlighter="true"]');
+        const ourFavicon = document.querySelector(
+          'link[data-tab-highlighter="true"]',
+        );
         const allFavicons = getAllFaviconElements();
 
         // If our favicon is missing or there are other favicons, re-apply
-        if (!ourFavicon || allFavicons.length > 1 ||
-            (allFavicons.length === 1 && allFavicons[0].href !== GREEN_FAVICON)) {
+        if (
+          !ourFavicon ||
+          allFavicons.length > 1 ||
+          (allFavicons.length === 1 && allFavicons[0].href !== GREEN_FAVICON)
+        ) {
           setGreenFavicon();
         }
       }
@@ -160,12 +214,19 @@ function removeIndicator(): void {
  * Handles visibility changes (tab becomes active/inactive)
  */
 function handleVisibilityChange(): void {
+  console.log(
+    `[Tab Highlighter] Tab visibility changed: ${document.hidden ? "HIDDEN" : "VISIBLE"}`,
+  );
+  logFaviconState("BEFORE visibility change handling");
+
   if (document.hidden) {
     // Tab is now hidden/inactive
     removeIndicator();
+    logFaviconState("AFTER removeIndicator()");
   } else {
     // Tab is now visible/active
     addIndicator();
+    logFaviconState("AFTER addIndicator()");
   }
 }
 
@@ -175,7 +236,7 @@ function handleVisibilityChange(): void {
  */
 const titleObserver = new MutationObserver((mutations) => {
   for (const mutation of mutations) {
-    if (mutation.type === 'childList' && !document.hidden) {
+    if (mutation.type === "childList" && !document.hidden) {
       // Title changed while tab is active
       const currentTitle = document.title;
 
@@ -185,7 +246,10 @@ const titleObserver = new MutationObserver((mutations) => {
         addIndicator();
       } else if (currentTitle.endsWith(INDICATOR)) {
         // Update our stored original title
-        originalTitle = currentTitle.substring(0, currentTitle.length - INDICATOR.length);
+        originalTitle = currentTitle.substring(
+          0,
+          currentTitle.length - INDICATOR.length,
+        );
       }
     }
   }
@@ -200,18 +264,32 @@ const faviconObserver = new MutationObserver((mutations) => {
 
   for (const mutation of mutations) {
     // Check if any favicon link elements were modified or added
-    if (mutation.type === 'attributes' && mutation.attributeName === 'href') {
+    if (mutation.type === "attributes" && mutation.attributeName === "href") {
       const target = mutation.target as HTMLLinkElement;
-      if (target.rel && target.rel.includes('icon') && target.href !== GREEN_FAVICON) {
+      if (
+        target.rel &&
+        target.rel.includes("icon") &&
+        target.href !== GREEN_FAVICON
+      ) {
         // Site changed the favicon, re-apply our green circle
+        console.log(
+          "[Tab Highlighter] Site modified favicon href, re-applying green favicon",
+        );
         setGreenFavicon();
       }
-    } else if (mutation.type === 'childList') {
+    } else if (mutation.type === "childList") {
       // Check if new favicon elements were added
       mutation.addedNodes.forEach((node) => {
-        if (node.nodeName === 'LINK') {
+        if (node.nodeName === "LINK") {
           const link = node as HTMLLinkElement;
-          if (link.rel && link.rel.includes('icon') && link.href !== GREEN_FAVICON) {
+          if (
+            link.rel &&
+            link.rel.includes("icon") &&
+            link.href !== GREEN_FAVICON
+          ) {
+            console.log(
+              "[Tab Highlighter] Site added new favicon element, re-applying green favicon",
+            );
             setGreenFavicon();
           }
         }
@@ -224,20 +302,25 @@ const faviconObserver = new MutationObserver((mutations) => {
  * Initialize the extension
  */
 function init(): void {
+  console.log("[Tab Highlighter] Initializing extension v1.1.1");
+
   // Store original favicon
   const favicon = getFaviconElement();
-  originalFavicon = favicon.href || '';
+  originalFavicon = favicon.href || "";
+
+  logFaviconState("INIT - Initial state");
 
   // Add indicator if tab is currently visible
   if (!document.hidden) {
     addIndicator();
+    logFaviconState("INIT - After addIndicator()");
   }
 
   // Listen for visibility changes
-  document.addEventListener('visibilitychange', handleVisibilityChange);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
 
   // Observe title changes
-  const titleElement = document.querySelector('title');
+  const titleElement = document.querySelector("title");
   if (titleElement) {
     titleObserver.observe(titleElement, {
       childList: true,
@@ -251,13 +334,15 @@ function init(): void {
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ['href'],
+    attributeFilter: ["href"],
   });
+
+  console.log("[Tab Highlighter] Extension initialized successfully");
 }
 
 // Start the extension when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init);
 } else {
   init();
 }
