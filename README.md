@@ -93,7 +93,8 @@ This extension:
 - **Chrome**: Version 88+ (Manifest V3 support)
 - **Edge**: Version 88+ (Chromium-based)
 - **Brave**: Latest version
-- **Other Chromium browsers**: Should work, but not tested
+- **ChatGPT Atlas**: Tested and working
+- **Other Chromium browsers**: Should work with Manifest V3 support
 
 ## For Developers
 

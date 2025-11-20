@@ -474,7 +474,8 @@ To bypass the hook in emergencies (not recommended): `git commit --no-verify`
 - **Chrome**: Version 88+ (Manifest V3 support required)
 - **Edge**: Version 88+ (Chromium-based)
 - **Brave**: Latest version
-- **Other Chromium browsers**: Should work, but not officially tested
+- **ChatGPT Atlas**: Tested and working
+- **Other Chromium browsers**: Should work with Manifest V3 support
 
 ### Known Limitations
 
