@@ -144,31 +144,50 @@ chrome.windows.onFocusChanged.addListener((windowId) => {
   }
 });
 
+/**
+ * Clears all stale indicators from all tabs and initializes MRU with active tab
+ */
+async function initializeMRU(): Promise<void> {
+  console.log("[Tab Highlighter BG] Initializing - clearing stale indicators from all tabs");
+
+  // Get ALL tabs and clear any stale indicators
+  const allTabs = await chrome.tabs.query({});
+  for (const tab of allTabs) {
+    if (tab.id) {
+      try {
+        await chrome.tabs.sendMessage(tab.id, {
+          type: "UPDATE_POSITION",
+          position: 0, // Clear all indicators
+          mruStack: [],
+          timestamp: Date.now(),
+        });
+      } catch {
+        // Tab might not have content script loaded - this is fine
+      }
+    }
+  }
+
+  console.log("[Tab Highlighter BG] Cleared stale indicators, now initializing with active tab");
+
+  // Now initialize with currently active tab
+  const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (activeTabs[0]) {
+    updateMRU(activeTabs[0].id!);
+  }
+}
+
 // Service worker startup
 chrome.runtime.onStartup.addListener(() => {
   console.log("[Tab Highlighter BG] Browser startup detected");
-  chrome.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
-    if (tabs[0]) {
-      updateMRU(tabs[0].id!);
-    }
-  });
+  initializeMRU();
 });
 
 // Service worker install/update
 chrome.runtime.onInstalled.addListener(() => {
   console.log("[Tab Highlighter BG] Extension installed/updated");
-  chrome.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
-    if (tabs[0]) {
-      updateMRU(tabs[0].id!);
-    }
-  });
+  initializeMRU();
 });
 
-// Initialize with currently active tab
-chrome.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
-  if (tabs[0]) {
-    updateMRU(tabs[0].id!);
-  }
-});
-
-console.log("[Tab Highlighter BG] Background worker initialized");
+// Initialize on service worker first load
+console.log("[Tab Highlighter BG] Background worker script loaded");
+initializeMRU();

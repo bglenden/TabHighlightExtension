@@ -205,17 +205,19 @@ function setPosition(position: number): void {
 
     currentPosition = position;
 
-    // Remove old indicator if present
-    let title = document.title;
-    for (const indicator of Object.values(INDICATORS)) {
-      if (title.endsWith(indicator)) {
-        title = title.substring(0, title.length - indicator.length);
-        break;
+    // If there was a previous position, remove that indicator first
+    if (currentPosition > 0) {
+      const oldIndicator = INDICATORS[currentPosition];
+      if (document.title.endsWith(oldIndicator)) {
+        originalTitle = document.title.substring(
+          0,
+          document.title.length - oldIndicator.length,
+        );
       }
     }
 
     // Add new indicator
-    document.title = title + INDICATORS[position];
+    document.title = originalTitle + INDICATORS[position];
 
     // Set position favicon
     setPositionFavicon(position);
@@ -237,15 +239,8 @@ function removeIndicator(): void {
       `[Tab Highlighter] Removing position ${currentPosition} indicator`,
     );
 
-    // Remove indicator from title
-    let title = document.title;
-    for (const indicator of Object.values(INDICATORS)) {
-      if (title.endsWith(indicator)) {
-        title = title.substring(0, title.length - indicator.length);
-        break;
-      }
-    }
-    document.title = title;
+    // Restore original title
+    document.title = originalTitle;
 
     currentPosition = 0;
     stopFaviconEnforcement();
