@@ -1,56 +1,41 @@
 # Active Tab Highlighter - Technical Documentation
 
-## Current Status (v1.0.6)
+## Current Status (v1.1.0)
+
+### Production Release ✅
+
+**Version**: 1.1.0 (Production)
+**Status**: Stable and fully functional
+**Release Date**: 2025-11-19
+**GitHub**: https://github.com/bglenden/TabHighlightExtension
 
 ### What's Working
 ✅ **Title indicator**: Green circle (🟢) appears at the END of active tab titles
 ✅ **Favicon replacement**: Green circle favicon replaces site favicon when tab is active
-✅ **Most sites work correctly**: Google, CNN, and most websites properly show/hide indicators
+✅ **All websites work correctly**: Including x.com (Twitter), Google, CNN, and all tested sites
 ✅ **Visibility detection**: Page Visibility API correctly detects tab switches
 ✅ **Favicon enforcement**: 500ms interval prevents sites from overwriting our green favicon
+✅ **Dynamic title handling**: Properly handles sites that change their titles frequently
+✅ **Clean production build**: No debug logs, minified to 2.17 KiB
+✅ **Code quality**: ESLint configured, lints with 0 errors and 0 warnings
 
-### Known Issues
-❌ **x.com (Twitter) specific issue**: Green favicon may not disappear when switching away from x.com
-⚠️ **Debug logs currently enabled**: Built in development mode for debugging (version 1.0.6)
+### Known Limitations
+⚠️ **Chrome internal pages**: Cannot run on `chrome://` URLs (browser security restriction)
+⚠️ **Extension pages**: Cannot run on Chrome Web Store or `chrome://extensions/`
+⚠️ **New Tab page**: Cannot modify default new tab (browser security restriction)
 
-### Debugging Session Notes
+These are **browser security features**, not bugs. All Chrome extensions have these limitations.
 
-**Last tested**: 2025-11-18
-**Console logs from cnn.com show**:
-- Extension correctly detects visibility changes (`document.hidden: true/false`)
-- `removeIndicator()` is called when tab becomes inactive
-- `stopFaviconEnforcement()` stops the 500ms interval
-- Original favicon is restored correctly
-- When tab becomes active again, green favicon is re-applied
+### Bug Fixes in v1.1.0
 
-**x.com issue needs investigation**:
-- Console logs were from cnn.com (which works correctly)
-- Need to specifically test x.com and capture console logs
-- x.com may have unique favicon update patterns that interfere
-
-### Next Steps
-
-1. **Test x.com specifically**:
-   - Open x.com in a tab
-   - Open DevTools Console
-   - Switch away from x.com tab
-   - Check if green favicon disappears
-   - Capture console logs showing what happens
-
-2. **If x.com favicon persists**:
-   - Check if x.com is adding NEW favicon elements after we restore
-   - May need to use a more aggressive MutationObserver on x.com
-   - Consider site-specific handling for problematic sites
-
-3. **Production build**:
-   - Once x.com issue is resolved, remove debug console.log statements
-   - Build in production mode (`npm run build`)
-   - Update version to 1.1.0
-
-4. **Optional enhancements**:
-   - Make indicator configurable (different emoji options)
-   - Options page for user preferences
-   - Whitelist/blacklist for specific sites
+**x.com (Twitter) Favicon Issue - RESOLVED**
+- **Problem**: Green favicon persisted when switching away from x.com
+- **Root Cause**: x.com dynamically changes page titles, breaking the removal condition check
+- **Solution**: Made `removeIndicator()` more robust by:
+  - Setting `isIndicatorActive = false` BEFORE any DOM modifications
+  - Removing the title suffix check that failed when x.com changed the title
+  - Preventing race condition with `faviconObserver`
+- **Status**: ✅ Verified working on x.com and all test sites
 
 ## Overview
 This Chrome extension adds a visual indicator (🟢 green circle emoji) to the END of the active tab's title and replaces the favicon with a green circle, making it easy to identify which tab is currently being viewed. This is particularly useful when you have many tabs open and want to quickly close the one you just finished reading.
@@ -61,9 +46,9 @@ This Chrome extension adds a visual indicator (🟢 green circle emoji) to the E
 ```
 /TabHighlightExtension
 ├── src/
-│   └── content.ts          # Main content script with tab highlighting logic
-├── dist/                    # Build output (created by webpack)
-│   ├── content.js          # Compiled content script
+│   └── content.ts          # Main content script (156 LOC)
+├── dist/                    # Build output (gitignored)
+│   ├── content.js          # Compiled content script (2.17 KiB minified)
 │   ├── manifest.json       # Copied manifest
 │   └── icons/              # Copied icon files
 ├── icons/
@@ -73,16 +58,20 @@ This Chrome extension adds a visual indicator (🟢 green circle emoji) to the E
 ├── manifest.json           # Chrome extension manifest (v3)
 ├── package.json            # NPM dependencies and scripts
 ├── tsconfig.json           # TypeScript compiler configuration
-├── webpack.config.js       # Webpack bundler configuration
-└── .gitignore              # Git ignore rules
+├── webpack.config.cjs      # Webpack bundler configuration (CommonJS)
+├── eslint.config.js        # ESLint configuration (flat config)
+├── .gitignore              # Git ignore rules
+├── README.md               # User documentation
+└── CLAUDE.md               # Technical documentation (this file)
 ```
 
 ### Technology Stack
 - **TypeScript 5.4+**: Type-safe JavaScript with modern features
 - **Webpack 5**: Module bundler for compiling and packaging
+- **ESLint 9**: Code quality and linting with TypeScript support
 - **Chrome Extension Manifest V3**: Latest extension platform
 - **Page Visibility API**: Browser API for detecting tab visibility changes
-- **MutationObserver API**: DOM API for monitoring title changes
+- **MutationObserver API**: DOM API for monitoring title and favicon changes
 
 ## Technical Design
 
@@ -256,9 +245,11 @@ titleObserver.observe(titleElement, {
 ## Development Workflow
 
 ### Build Commands
-- `npm run build` - Production build (minified)
+- `npm run build` - Production build (minified, 2.17 KiB)
 - `npm run dev` - Development build with watch mode
 - `npm run clean` - Remove dist/ directory
+- `npm run lint` - Check code quality with ESLint
+- `npm run lint:fix` - Auto-fix linting issues
 
 ### Testing Strategy
 **Manual Testing:**
@@ -330,11 +321,12 @@ titleObserver.observe(titleElement, {
 6. **Tab grouping** - Integrate with Chrome's tab groups
 
 ### Code Improvements
-1. **Unit tests** - Jest/Vitest for content script logic
-2. **E2E tests** - Puppeteer for browser automation
-3. **CI/CD** - Automated builds and releases
-4. **ESLint/Prettier** - Code quality and formatting
-5. **Changelog** - Track version history
+1. ✅ **ESLint** - Configured with TypeScript support (v1.1.0)
+2. **Unit tests** - Jest/Vitest for content script logic (not practical due to heavy DOM mocking)
+3. **E2E tests** - Puppeteer for browser automation (potential future enhancement)
+4. **CI/CD** - Automated builds and releases
+5. **Prettier** - Code formatting
+6. **Changelog** - Track version history
 
 ## Troubleshooting
 
