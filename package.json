@@ -2,10 +2,13 @@
   "name": "tab-highlight-extension",
   "version": "1.0.7",
   "description": "Chrome extension that highlights the active tab with a visual indicator",
+  "type": "module",
   "scripts": {
     "build": "webpack --mode production",
     "dev": "webpack --mode development --watch",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix"
   },
   "keywords": [
     "chrome-extension",
@@ -16,7 +19,10 @@
   "license": "MIT",
   "devDependencies": {
     "@types/chrome": "^0.0.268",
+    "@typescript-eslint/eslint-plugin": "^8.47.0",
+    "@typescript-eslint/parser": "^8.47.0",
     "copy-webpack-plugin": "^12.0.2",
+    "eslint": "^9.39.1",
     "ts-loader": "^9.5.1",
     "typescript": "^5.4.5",
     "webpack": "^5.91.0",
