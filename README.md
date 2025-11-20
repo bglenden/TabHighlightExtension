@@ -8,6 +8,9 @@ A lightweight Chrome extension that adds a visual indicator to your active tab, 
 
 When you have many tabs open, it can be difficult to quickly identify the active tab - especially when you want to close it after reading. This extension solves that problem by adding a bright 🟢 green circle to the active tab's title and replacing its favicon, making it instantly visible in your tab bar.
 
+![Active Tab Highlighter Demo](screenshots/demo.png)
+_Example: The active New York Times tab shows the green circle indicator in both the title and favicon_
+
 ## Features
 
 - **Title Indicator**: Adds 🟢 to the end of the active tab's title
