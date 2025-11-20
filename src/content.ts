@@ -1,21 +1,30 @@
 /**
  * Active Tab Highlighter - Content Script
  *
- * This script adds a visual indicator (🟢) to the end of the active tab's title
- * and replaces the favicon with a green circle when the tab is active.
+ * This script adds MRU (Most Recently Used) position indicators to tabs.
+ * Shows numbered colored circles: 1=green (current), 2=yellow, 3=orange, 4=red
  */
 
-// The indicator to append to the title
-const INDICATOR = " 🟢";
+// MRU Position Favicons (SVG with number inside, black text)
+const FAVICONS: Record<number, string> = {
+  1: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="%234CAF50"/><text x="8" y="12" font-size="10" fill="%23000000" text-anchor="middle" font-weight="bold" font-family="Arial,sans-serif">1</text></svg>',
+  2: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="%23FFD700"/><text x="8" y="12" font-size="10" fill="%23000000" text-anchor="middle" font-weight="bold" font-family="Arial,sans-serif">2</text></svg>',
+  3: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="%23FF8C00"/><text x="8" y="12" font-size="10" fill="%23000000" text-anchor="middle" font-weight="bold" font-family="Arial,sans-serif">3</text></svg>',
+  4: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="%23F44336"/><text x="8" y="12" font-size="10" fill="%23000000" text-anchor="middle" font-weight="bold" font-family="Arial,sans-serif">4</text></svg>',
+};
 
-// Green circle favicon as data URI (16x16 PNG)
-const GREEN_FAVICON =
-  'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="%234CAF50"/></svg>';
+// MRU Position Emojis for title
+const INDICATORS: Record<number, string> = {
+  1: " 🟢",
+  2: " 🟡",
+  3: " 🟠",
+  4: " 🔴",
+};
 
-// Store the original title and favicon to restore them when tab becomes inactive
+// Store the original title and favicon to restore them when tab loses MRU position
 let originalTitle: string = document.title;
 let originalFavicon: string | null = null;
-let isIndicatorActive: boolean = false;
+let currentPosition: number = 0; // 0 = no position, 1-4 = MRU positions
 let faviconCheckInterval: number | null = null;
 
 /**
@@ -28,7 +37,7 @@ function logFaviconState(context: string): void {
   );
 
   console.log(`[Tab Highlighter] ${context}`, {
-    isIndicatorActive,
+    currentPosition,
     documentHidden: document.hidden,
     documentTitle: document.title,
     originalTitle,
@@ -69,9 +78,9 @@ function getFaviconElement(): HTMLLinkElement {
 }
 
 /**
- * Replaces ALL favicons with a green circle
+ * Replaces ALL favicons with an MRU position favicon
  */
-function setGreenFavicon(): void {
+function setPositionFavicon(position: number): void {
   // Temporarily disconnect observer to prevent our changes from triggering it
   faviconObserver.disconnect();
 
@@ -86,12 +95,13 @@ function setGreenFavicon(): void {
   // Remove all existing favicons
   allFavicons.forEach((fav) => fav.remove());
 
-  // Create our green favicon
+  // Create our MRU position favicon
   const favicon = document.createElement("link");
   favicon.rel = "icon";
-  favicon.href = GREEN_FAVICON;
+  favicon.href = FAVICONS[position];
   favicon.type = "image/svg+xml";
   favicon.setAttribute("data-tab-highlighter", "true");
+  favicon.setAttribute("data-mru-position", position.toString());
   document.head.appendChild(favicon);
 
   // Reconnect observer after our changes are complete
@@ -110,7 +120,7 @@ function restoreOriginalFavicon(): void {
   // Temporarily disconnect observer to prevent our changes from triggering it
   faviconObserver.disconnect();
 
-  // Remove our green favicon
+  // Remove our MRU favicon
   const ourFavicon = document.querySelector(
     'link[data-tab-highlighter="true"]',
   );
@@ -140,13 +150,13 @@ function restoreOriginalFavicon(): void {
 }
 
 /**
- * Starts periodic checking to enforce green favicon on stubborn sites
+ * Starts periodic checking to enforce MRU favicon on stubborn sites
  */
 function startFaviconEnforcement(): void {
-  // Check every 500ms to re-apply green favicon if site changes it
-  if (faviconCheckInterval === null) {
+  // Check every 500ms to re-apply position favicon if site changes it
+  if (faviconCheckInterval === null && currentPosition > 0) {
     faviconCheckInterval = window.setInterval(() => {
-      if (isIndicatorActive && !document.hidden) {
+      if (currentPosition > 0 && !document.hidden) {
         // Check if our favicon still exists
         const ourFavicon = document.querySelector(
           'link[data-tab-highlighter="true"]',
@@ -157,9 +167,10 @@ function startFaviconEnforcement(): void {
         if (
           !ourFavicon ||
           allFavicons.length > 1 ||
-          (allFavicons.length === 1 && allFavicons[0].href !== GREEN_FAVICON)
+          (allFavicons.length === 1 &&
+            allFavicons[0].href !== FAVICONS[currentPosition])
         ) {
-          setGreenFavicon();
+          setPositionFavicon(currentPosition);
         }
       }
     }, 500);
@@ -177,15 +188,43 @@ function stopFaviconEnforcement(): void {
 }
 
 /**
- * Adds the indicator to the end of the page title and changes favicon
+ * Adds the MRU indicator to the title and changes favicon
  */
-function addIndicator(): void {
-  if (!isIndicatorActive && !document.title.endsWith(INDICATOR)) {
-    originalTitle = document.title;
-    document.title = document.title + INDICATOR;
-    setGreenFavicon();
+function setPosition(position: number): void {
+  if (position < 1 || position > 4) {
+    removeIndicator();
+    return;
+  }
+
+  // If position changed, update everything
+  if (currentPosition !== position) {
+    // Store original title if switching from no-position to position
+    if (currentPosition === 0) {
+      originalTitle = document.title;
+    }
+
+    currentPosition = position;
+
+    // Remove old indicator if present
+    let title = document.title;
+    for (const indicator of Object.values(INDICATORS)) {
+      if (title.endsWith(indicator)) {
+        title = title.substring(0, title.length - indicator.length);
+        break;
+      }
+    }
+
+    // Add new indicator
+    document.title = title + INDICATORS[position];
+
+    // Set position favicon
+    setPositionFavicon(position);
     startFaviconEnforcement();
-    isIndicatorActive = true;
+
+    console.log(
+      `[Tab Highlighter] Set position ${position} with ${INDICATORS[position]}`,
+    );
+    logFaviconState(`After setPosition(${position})`);
   }
 }
 
@@ -193,40 +232,26 @@ function addIndicator(): void {
  * Removes the indicator from the page title and restores favicon
  */
 function removeIndicator(): void {
-  if (isIndicatorActive) {
-    // Set this to false FIRST to prevent faviconObserver from re-applying green favicon
-    isIndicatorActive = false;
+  if (currentPosition > 0) {
+    console.log(
+      `[Tab Highlighter] Removing position ${currentPosition} indicator`,
+    );
 
-    // Remove indicator from title if it exists, otherwise just restore original
-    if (document.title.endsWith(INDICATOR)) {
-      document.title = originalTitle;
-    } else {
-      // Title was changed by the page, just restore what we have
-      document.title = originalTitle;
+    // Remove indicator from title
+    let title = document.title;
+    for (const indicator of Object.values(INDICATORS)) {
+      if (title.endsWith(indicator)) {
+        title = title.substring(0, title.length - indicator.length);
+        break;
+      }
     }
+    document.title = title;
 
+    currentPosition = 0;
     stopFaviconEnforcement();
     restoreOriginalFavicon();
-  }
-}
 
-/**
- * Handles visibility changes (tab becomes active/inactive)
- */
-function handleVisibilityChange(): void {
-  console.log(
-    `[Tab Highlighter] Tab visibility changed: ${document.hidden ? "HIDDEN" : "VISIBLE"}`,
-  );
-  logFaviconState("BEFORE visibility change handling");
-
-  if (document.hidden) {
-    // Tab is now hidden/inactive
-    removeIndicator();
-    logFaviconState("AFTER removeIndicator()");
-  } else {
-    // Tab is now visible/active
-    addIndicator();
-    logFaviconState("AFTER addIndicator()");
+    logFaviconState("After removeIndicator()");
   }
 }
 
@@ -236,20 +261,23 @@ function handleVisibilityChange(): void {
  */
 const titleObserver = new MutationObserver((mutations) => {
   for (const mutation of mutations) {
-    if (mutation.type === "childList" && !document.hidden) {
-      // Title changed while tab is active
+    if (mutation.type === "childList" && currentPosition > 0) {
+      // Title changed while we have a position
       const currentTitle = document.title;
+      const currentIndicator = INDICATORS[currentPosition];
 
-      // If the title doesn't have our indicator but should (tab is visible)
-      if (!currentTitle.endsWith(INDICATOR)) {
-        originalTitle = currentTitle;
-        addIndicator();
-      } else if (currentTitle.endsWith(INDICATOR)) {
-        // Update our stored original title
-        originalTitle = currentTitle.substring(
-          0,
-          currentTitle.length - INDICATOR.length,
-        );
+      // If the title doesn't have our indicator but should
+      if (!currentTitle.endsWith(currentIndicator)) {
+        // Extract original title (remove any old indicator)
+        let title = currentTitle;
+        for (const indicator of Object.values(INDICATORS)) {
+          if (title.endsWith(indicator)) {
+            title = title.substring(0, title.length - indicator.length);
+            break;
+          }
+        }
+        originalTitle = title;
+        document.title = title + currentIndicator;
       }
     }
   }
@@ -260,7 +288,7 @@ const titleObserver = new MutationObserver((mutations) => {
  * Some sites (like x.com) dynamically update their favicon, so we need to re-apply ours
  */
 const faviconObserver = new MutationObserver((mutations) => {
-  if (document.hidden || !isIndicatorActive) return;
+  if (document.hidden || currentPosition === 0) return;
 
   for (const mutation of mutations) {
     // Check if any favicon link elements were modified or added
@@ -269,13 +297,13 @@ const faviconObserver = new MutationObserver((mutations) => {
       if (
         target.rel &&
         target.rel.includes("icon") &&
-        target.href !== GREEN_FAVICON
+        target.href !== FAVICONS[currentPosition]
       ) {
-        // Site changed the favicon, re-apply our green circle
+        // Site changed the favicon, re-apply our position favicon
         console.log(
-          "[Tab Highlighter] Site modified favicon href, re-applying green favicon",
+          "[Tab Highlighter] Site modified favicon href, re-applying position favicon",
         );
-        setGreenFavicon();
+        setPositionFavicon(currentPosition);
       }
     } else if (mutation.type === "childList") {
       // Check if new favicon elements were added
@@ -285,12 +313,12 @@ const faviconObserver = new MutationObserver((mutations) => {
           if (
             link.rel &&
             link.rel.includes("icon") &&
-            link.href !== GREEN_FAVICON
+            link.href !== FAVICONS[currentPosition]
           ) {
             console.log(
-              "[Tab Highlighter] Site added new favicon element, re-applying green favicon",
+              "[Tab Highlighter] Site added new favicon element, re-applying position favicon",
             );
-            setGreenFavicon();
+            setPositionFavicon(currentPosition);
           }
         }
       });
@@ -299,10 +327,51 @@ const faviconObserver = new MutationObserver((mutations) => {
 });
 
 /**
+ * Handles messages from the background service worker
+ */
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log("[Tab Highlighter] Received message:", message);
+  console.log("[Tab Highlighter] Current state before update:", {
+    currentPosition,
+    documentTitle: document.title,
+    documentHidden: document.hidden,
+  });
+
+  if (message.type === "UPDATE_POSITION") {
+    const position = message.position;
+    const mruStack = message.mruStack || [];
+    const timestamp = message.timestamp || Date.now();
+
+    console.log(
+      `[Tab Highlighter] UPDATE_POSITION: ${position}, MRU stack: ${mruStack}, timestamp: ${timestamp}`,
+    );
+
+    if (position >= 1 && position <= 4) {
+      setPosition(position);
+    } else {
+      removeIndicator();
+    }
+
+    console.log("[Tab Highlighter] Position update complete:", {
+      newPosition: currentPosition,
+      documentTitle: document.title,
+    });
+
+    sendResponse({
+      success: true,
+      currentPosition,
+      documentTitle: document.title,
+    });
+  }
+
+  return true; // Keep message channel open for async response
+});
+
+/**
  * Initialize the extension
  */
 function init(): void {
-  console.log("[Tab Highlighter] Initializing extension v1.1.1");
+  console.log("[Tab Highlighter] Initializing extension (MRU mode)");
 
   // Store original favicon
   const favicon = getFaviconElement();
@@ -310,14 +379,15 @@ function init(): void {
 
   logFaviconState("INIT - Initial state");
 
-  // Add indicator if tab is currently visible
-  if (!document.hidden) {
-    addIndicator();
-    logFaviconState("INIT - After addIndicator()");
-  }
+  // Clean up any leftover indicators from previous session
+  // (Browser may have cached old favicons/titles from before restart)
+  removeIndicator();
+  console.log(
+    "[Tab Highlighter] Cleaned up any cached indicators from previous session",
+  );
 
-  // Listen for visibility changes
-  document.addEventListener("visibilitychange", handleVisibilityChange);
+  // Don't set position here - wait for background worker to tell us our position
+  // The background worker will send UPDATE_POSITION message
 
   // Observe title changes
   const titleElement = document.querySelector("title");

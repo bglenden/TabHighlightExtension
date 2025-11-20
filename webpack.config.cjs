@@ -5,6 +5,8 @@ const packageJson = require("./package.json");
 module.exports = {
   entry: {
     content: "./src/content.ts",
+    background: "./src/background.ts",
+    popup: "./src/popup.ts",
   },
   module: {
     rules: [
@@ -38,6 +40,7 @@ module.exports = {
           },
         },
         { from: "icons", to: "icons" },
+        { from: "popup.html", to: "popup.html" },
       ],
     }),
   ],
