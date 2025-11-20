@@ -1,13 +1,29 @@
 # Active Tab Highlighter - Technical Documentation
 
-## Current Status (v1.1.0)
+## Current Status (v1.3.0)
 
 ### Production Release ✅
 
-**Version**: 1.1.0 (Production)
-**Status**: Stable and fully functional
-**Release Date**: 2025-11-19
+**Version**: 1.3.0 (Production)
+**Status**: MRU breadcrumb trail feature - testing phase
+**Release Date**: 2025-11-20
 **GitHub**: https://github.com/bglenden/TabHighlightExtension
+
+### ⚠️ TODO: Production Optimization
+
+**Debug Logging**: The current version includes extensive console.log statements for debugging the MRU feature. These should be removed or wrapped in a debug flag before final production release to reduce bundle size and improve performance.
+
+**Location of debug logs:**
+
+- `src/background.ts` - MRU tracking, broadcasting, tab events
+- `src/content.ts` - Position updates, favicon changes, initialization
+- `src/popup.ts` - Reload functionality
+
+**Options for production:**
+
+1. Remove all console.log statements
+2. Wrap in `if (DEBUG)` flag controlled by webpack
+3. Use a logging utility that can be disabled in production builds
 
 ### What's Working
 
