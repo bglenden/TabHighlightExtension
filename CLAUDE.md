@@ -375,6 +375,9 @@ Version numbering follows semantic versioning (MAJOR.MINOR.PATCH):
 2. Run `npm run build` to regenerate `dist/manifest.json` with new version
 3. Commit with descriptive message including version number
 
+> **Why the extra build?**  
+> Chrome loads the unpacked extension from `dist/`, so the extension version Chrome displays always comes from `dist/manifest.json`. That file is copied from the root `manifest.json` during `npm run build`. If you forget to rebuild after bumping the version, Chrome will keep showing the old number from the previous build.
+
 **Example:**
 ```bash
 # Edit package.json version from 1.3.11 to 1.3.12
