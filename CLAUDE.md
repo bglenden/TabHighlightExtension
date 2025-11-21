@@ -365,6 +365,8 @@ titleObserver.observe(titleElement, {
 
 **ALWAYS update the version number in `package.json` before committing bug fixes or new features.**
 
+> **Operational note:** Bump the version for every source code change so you can confirm the new build is loaded in Chrome. After bumping, run `npm run build` so `dist/manifest.json` carries the new number.
+
 Version numbering follows semantic versioning (MAJOR.MINOR.PATCH):
 - **PATCH** (1.3.11 → 1.3.12): Bug fixes, minor improvements
 - **MINOR** (1.3.0 → 1.4.0): New features, significant enhancements
