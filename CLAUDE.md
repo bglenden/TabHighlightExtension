@@ -14,14 +14,14 @@
 ✅ **MRU Position Tracking**: Tracks last 4 active tabs with positions 1-4
 ✅ **Color-coded Indicators**: 🟢 (green/1), 🟡 (yellow/2), 🟠 (orange/3), 🔴 (red/4)
 ✅ **Title indicators**: Colored emoji appears at the END of tab titles
-✅ **Numbered favicon replacement**: SVG favicons with colored circles and position numbers
 ✅ **Background service worker**: Maintains MRU stack and broadcasts position updates
 ✅ **All websites work correctly**: Including x.com (Twitter), Google, CNN, and all tested sites
-✅ **Favicon enforcement**: 500ms interval prevents sites from overwriting position favicons
 ✅ **Dynamic title handling**: Properly handles sites that change their titles frequently
 ✅ **Extension context invalidation handling**: Gracefully handles extension reloads without errors
+✅ **Debug logging toggle**: User-controlled debug logging via popup checkbox
 ✅ **Code quality**: ESLint configured, lints with 0 errors and 0 warnings
 ✅ **URL filtering**: Only tracks http:// and https:// URLs to avoid errors on protected pages
+✅ **Bookmark-safe**: No favicon modification prevents bookmark contamination
 
 ### Known Limitations
 
@@ -32,7 +32,29 @@
 
 These are **browser security features**, not bugs. All Chrome extensions have these limitations.
 
-### Recent Bug Fixes (v1.3.12-1.3.18)
+### Design Decision: Favicon Modification Removed (v1.3.20+)
+
+**Decision Date**: 2025-11-20
+**Reason**: Favicon modification caused bookmark contamination - when users bookmarked pages, Chrome captured the MRU favicon (🟢1, 🟡2, etc.) instead of the original site favicon, polluting bookmark bars and menus.
+
+**What Changed**:
+- ❌ **Removed**: Favicon replacement with numbered colored circles
+- ✅ **Kept**: Title indicators with colored emoji (🟢🟡🟠🔴)
+
+**How to Revert** (if needed for personal use):
+```bash
+git checkout v1.3.19-last-with-favicons
+npm install
+npm run build
+```
+
+The tagged version `v1.3.19-last-with-favicons` is the last commit with full favicon modification functionality, including:
+- SVG favicon generation with numbered circles
+- Favicon enforcement with 500ms interval
+- Original favicon storage and restoration
+- MutationObserver for favicon changes
+
+### Recent Bug Fixes (v1.3.12-1.3.19)
 
 **Extension Context Invalidation Errors - RESOLVED (v1.3.18)**
 

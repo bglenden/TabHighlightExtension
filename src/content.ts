@@ -213,19 +213,16 @@ function setPosition(position: number): void {
     } else {
       // Remove old indicator from current title to get original
       const oldIndicator = INDICATORS[oldPosition];
-      if (document.title.endsWith(oldIndicator)) {
-        originalTitle = document.title.substring(
-          0,
-          document.title.length - oldIndicator.length,
-        );
+      if (document.title.startsWith(oldIndicator)) {
+        originalTitle = document.title.substring(oldIndicator.length);
       }
     }
 
     // Update to new position
     currentPosition = position;
 
-    // Add new indicator
-    document.title = originalTitle + INDICATORS[position];
+    // Add new indicator at the beginning
+    document.title = INDICATORS[position] + originalTitle;
 
     // Set position favicon
     setPositionFavicon(position);
@@ -270,17 +267,17 @@ const titleObserver = new MutationObserver((mutations) => {
       const currentIndicator = INDICATORS[currentPosition];
 
       // If the title doesn't have our indicator but should
-      if (!currentTitle.endsWith(currentIndicator)) {
+      if (!currentTitle.startsWith(currentIndicator)) {
         // Extract original title (remove any old indicator)
         let title = currentTitle;
         for (const indicator of Object.values(INDICATORS)) {
-          if (title.endsWith(indicator)) {
-            title = title.substring(0, title.length - indicator.length);
+          if (title.startsWith(indicator)) {
+            title = title.substring(indicator.length);
             break;
           }
         }
         originalTitle = title;
-        document.title = title + currentIndicator;
+        document.title = currentIndicator + title;
       }
     }
   }
