@@ -4,7 +4,7 @@
 
 ### Production Release ✅
 
-**Version**: 1.3.18 (Production)
+**Version**: 1.3.25 (Production)
 **Status**: MRU breadcrumb trail feature - stable
 **Release Date**: 2025-11-20
 **GitHub**: https://github.com/bglenden/TabHighlightExtension
@@ -12,7 +12,7 @@
 ### What's Working
 
 ✅ **MRU Position Tracking**: Tracks last 4 active tabs with positions 1-4
-✅ **Color-coded Indicators**: 🟢 (green/1), 🟡 (yellow/2), 🟠 (orange/3), 🔴 (red/4)
+✅ **Color-coded Indicators**: 🟩 (green/1), 🟦 (blue/2), 🟧 (orange/3), 🟥 (red/4)
 ✅ **Title indicators**: Colored emoji appears at the END of tab titles
 ✅ **Background service worker**: Maintains MRU stack and broadcasts position updates
 ✅ **All websites work correctly**: Including x.com (Twitter), Google, CNN, and all tested sites
@@ -39,7 +39,7 @@ These are **browser security features**, not bugs. All Chrome extensions have th
 
 **What Changed**:
 - ❌ **Removed**: Favicon replacement with numbered colored circles
-- ✅ **Kept**: Title indicators with colored emoji (🟢🟡🟠🔴)
+- ✅ **Kept**: Title indicators with colored square emoji (🟩🟦🟧🟥)
 
 **How to Revert** (if needed for personal use):
 ```bash
