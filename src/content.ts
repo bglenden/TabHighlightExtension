@@ -26,6 +26,7 @@ let originalTitle: string = document.title;
 let originalFavicon: string | null = null;
 let currentPosition: number = 0; // 0 = no position, 1-4 = MRU positions
 let faviconCheckInterval: number | null = null;
+let extensionContextInvalidated: boolean = false; // Track if extension was reloaded
 
 /**
  * Logs debug information about current favicon state
@@ -327,6 +328,11 @@ const faviconObserver = new MutationObserver((mutations) => {
  * Handles messages from the background service worker
  */
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // If extension context is invalidated, ignore all messages
+  if (extensionContextInvalidated) {
+    return false;
+  }
+
   console.log("[Tab Highlighter] Received message:", message);
   console.log("[Tab Highlighter] Current state before update:", {
     currentPosition,
@@ -365,9 +371,75 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 /**
+ * Checks if the extension context is still valid
+ */
+function isExtensionContextValid(): boolean {
+  // If we already know it's invalidated, return false
+  if (extensionContextInvalidated) return false;
+
+  // Check if chrome.runtime is still accessible
+  try {
+    // Force evaluation by assigning to variables - this will throw if context is invalidated
+    const runtimeId = chrome.runtime.id;
+    const manifest = chrome.runtime.getManifest();
+
+    // Check if the values are actually valid
+    if (!runtimeId || !manifest) {
+      extensionContextInvalidated = true;
+      handleContextInvalidation();
+      return false;
+    }
+
+    return true;
+  } catch {
+    // Context is invalidated, set the flag immediately and clean up
+    extensionContextInvalidated = true;
+    handleContextInvalidation();
+    return false;
+  }
+}
+
+/**
+ * Handles extension context invalidation by cleaning up
+ */
+function handleContextInvalidation(): void {
+  if (extensionContextInvalidated) return; // Already handled
+
+  extensionContextInvalidated = true;
+  console.log(
+    "[Tab Highlighter] Extension was reloaded. This content script will stop. Please refresh the page to get the new version.",
+  );
+
+  // Stop all intervals and observers to avoid further errors
+  stopFaviconEnforcement();
+  titleObserver.disconnect();
+  faviconObserver.disconnect();
+
+  // Remove any indicators we currently have (clean up visual state)
+  if (currentPosition > 0) {
+    document.title = originalTitle;
+    currentPosition = 0;
+    restoreOriginalFavicon();
+  }
+}
+
+/**
  * Query and verify position when tab becomes visible (self-healing)
  */
 async function verifyPosition(): Promise<void> {
+  // FIRST: Check if we already know the context is invalidated
+  // This prevents multiple attempts that would each log an error
+  if (extensionContextInvalidated) {
+    return;
+  }
+
+  // SECOND: Check if extension context is still valid
+  if (!isExtensionContextValid()) {
+    // handleContextInvalidation is already called in isExtensionContextValid
+    return;
+  }
+
+  // THIRD: Try to send the message
   try {
     const response = await chrome.runtime.sendMessage({
       type: "GET_MY_POSITION",
@@ -393,8 +465,12 @@ async function verifyPosition(): Promise<void> {
         );
       }
     }
-  } catch (error) {
-    console.warn("[Tab Highlighter] Failed to verify position:", error);
+  } catch {
+    // Any error from chrome.runtime.sendMessage is likely due to context invalidation
+    // This happens when the extension is reloaded while content scripts are still running
+    // Set flag immediately to prevent other concurrent calls from logging errors
+    extensionContextInvalidated = true;
+    handleContextInvalidation();
   }
 }
 
@@ -406,7 +482,11 @@ document.addEventListener("visibilitychange", () => {
     console.log(
       "[Tab Highlighter] Tab became visible, verifying position...",
     );
-    verifyPosition();
+    // Call verifyPosition and catch any unhandled rejections
+    // (errors are already handled inside verifyPosition)
+    verifyPosition().catch(() => {
+      // Silently ignore - error handling is done inside verifyPosition()
+    });
   }
 });
 

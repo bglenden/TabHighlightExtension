@@ -1,64 +1,61 @@
 # Active Tab Highlighter - Technical Documentation
 
-## Current Status (v1.3.0)
+## Current Status (v1.3.18)
 
 ### Production Release ✅
 
-**Version**: 1.3.0 (Production)
-**Status**: MRU breadcrumb trail feature - testing phase
+**Version**: 1.3.18 (Production)
+**Status**: MRU breadcrumb trail feature - stable
 **Release Date**: 2025-11-20
 **GitHub**: https://github.com/bglenden/TabHighlightExtension
 
-### ⚠️ TODO: Production Optimization
-
-**Debug Logging**: The current version includes extensive console.log statements for debugging the MRU feature. These should be removed or wrapped in a debug flag before final production release to reduce bundle size and improve performance.
-
-**Location of debug logs:**
-
-- `src/background.ts` - MRU tracking, broadcasting, tab events
-- `src/content.ts` - Position updates, favicon changes, initialization
-- `src/popup.ts` - Reload functionality
-
-**Options for production:**
-
-1. Remove all console.log statements
-2. Wrap in `if (DEBUG)` flag controlled by webpack
-3. Use a logging utility that can be disabled in production builds
-
 ### What's Working
 
-✅ **Title indicator**: Green circle (🟢) appears at the END of active tab titles
-✅ **Favicon replacement**: Green circle favicon replaces site favicon when tab is active
+✅ **MRU Position Tracking**: Tracks last 4 active tabs with positions 1-4
+✅ **Color-coded Indicators**: 🟢 (green/1), 🟡 (yellow/2), 🟠 (orange/3), 🔴 (red/4)
+✅ **Title indicators**: Colored emoji appears at the END of tab titles
+✅ **Numbered favicon replacement**: SVG favicons with colored circles and position numbers
+✅ **Background service worker**: Maintains MRU stack and broadcasts position updates
 ✅ **All websites work correctly**: Including x.com (Twitter), Google, CNN, and all tested sites
-✅ **Visibility detection**: Page Visibility API correctly detects tab switches
-✅ **Favicon enforcement**: 500ms interval prevents sites from overwriting our green favicon
+✅ **Favicon enforcement**: 500ms interval prevents sites from overwriting position favicons
 ✅ **Dynamic title handling**: Properly handles sites that change their titles frequently
-✅ **Clean production build**: No debug logs, minified to 2.17 KiB
+✅ **Extension context invalidation handling**: Gracefully handles extension reloads without errors
 ✅ **Code quality**: ESLint configured, lints with 0 errors and 0 warnings
+✅ **URL filtering**: Only tracks http:// and https:// URLs to avoid errors on protected pages
 
 ### Known Limitations
 
 ⚠️ **Chrome internal pages**: Cannot run on `chrome://` URLs (browser security restriction)
 ⚠️ **Extension pages**: Cannot run on Chrome Web Store or `chrome://extensions/`
 ⚠️ **New Tab page**: Cannot modify default new tab (browser security restriction)
+⚠️ **Stale indicators**: After reloading the extension, **refresh tabs** to clear old indicators and activate new content scripts
 
 These are **browser security features**, not bugs. All Chrome extensions have these limitations.
 
-### Bug Fixes in v1.1.0
+### Recent Bug Fixes (v1.3.12-1.3.18)
 
-**x.com (Twitter) Favicon Issue - RESOLVED**
+**Extension Context Invalidation Errors - RESOLVED (v1.3.18)**
 
-- **Problem**: Green favicon persisted when switching away from x.com
-- **Root Cause**: x.com dynamically changes page titles, breaking the removal condition check
-- **Solution**: Made `removeIndicator()` more robust by:
-  - Setting `isIndicatorActive = false` BEFORE any DOM modifications
-  - Removing the title suffix check that failed when x.com changed the title
-  - Preventing race condition with `faviconObserver`
-- **Status**: ✅ Verified working on x.com and all test sites
+- **Problem**: When extension was reloaded, old content scripts logged "Extension context invalidated" errors repeatedly
+- **Root Cause**: Old content scripts tried to communicate with new background script, but extension context was invalid
+- **Solution**:
+  - Added three-layer validation before attempting `chrome.runtime.sendMessage()`
+  - Set `extensionContextInvalidated` flag immediately when context is invalid
+  - Call `handleContextInvalidation()` to clean up observers and intervals
+  - Added `.catch()` handler to prevent unhandled promise rejections
+- **Status**: ✅ No errors on extension reload, clean shutdown message displayed
+
+**Stale MRU Indicators - RESOLVED (v1.3.18)**
+
+- **Problem**: Tabs showed incorrect position indicators after extension reload
+- **Root Cause**: Old content scripts retained their position state and weren't receiving updates
+- **Solution**: Users must refresh tabs after reloading extension to get fresh content scripts
+- **Workaround**: Added clear user guidance in README.md about refreshing tabs
+- **Status**: ✅ Works correctly after tab refresh
 
 ## Overview
 
-This Chrome extension adds a visual indicator (🟢 green circle emoji) to the END of the active tab's title and replaces the favicon with a green circle, making it easy to identify which tab is currently being viewed. This is particularly useful when you have many tabs open and want to quickly close the one you just finished reading.
+This Chrome extension tracks your Most Recently Used (MRU) tabs and displays color-coded position indicators, creating a breadcrumb trail of your browsing session. The last 4 active tabs show numbered colored circles (1-4) in both their titles and favicons.
 
 ## Architecture
 
@@ -67,9 +64,14 @@ This Chrome extension adds a visual indicator (🟢 green circle emoji) to the E
 ```
 /TabHighlightExtension
 ├── src/
-│   └── content.ts          # Main content script (156 LOC)
+│   ├── content.ts          # Content script - manages tab indicators
+│   ├── background.ts       # Service worker - tracks MRU stack
+│   └── popup.ts            # Extension popup - reload functionality
 ├── dist/                    # Build output (gitignored)
-│   ├── content.js          # Compiled content script (2.17 KiB minified)
+│   ├── content.js          # Compiled content script (~6 KiB minified)
+│   ├── background.js       # Compiled background worker (~3.25 KiB minified)
+│   ├── popup.js            # Compiled popup script (~2.28 KiB minified)
+│   ├── popup.html          # Popup UI
 │   ├── manifest.json       # Copied manifest
 │   └── icons/              # Copied icon files
 ├── icons/
@@ -77,6 +79,7 @@ This Chrome extension adds a visual indicator (🟢 green circle emoji) to the E
 │   ├── icon48.png          # 48x48 extension icon
 │   └── icon128.png         # 128x128 extension icon
 ├── manifest.json           # Chrome extension manifest (v3)
+├── popup.html              # Extension popup HTML
 ├── package.json            # NPM dependencies and scripts
 ├── tsconfig.json           # TypeScript compiler configuration
 ├── webpack.config.cjs      # Webpack bundler configuration (CommonJS)
