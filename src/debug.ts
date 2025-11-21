@@ -5,11 +5,10 @@
  * The debug flag is stored in chrome.storage.local and synchronized across all scripts.
  */
 
+import { DEBUG_STORAGE_KEY } from "./types";
+
 // Cached debug flag (updated via storage listener)
 let DEBUG = false;
-
-// Storage key for debug flag
-const DEBUG_STORAGE_KEY = "debugLoggingEnabled";
 
 /**
  * Initialize debug logging system

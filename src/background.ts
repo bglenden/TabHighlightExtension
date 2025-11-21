@@ -6,6 +6,12 @@
  */
 
 import { initDebug, log, warn } from "./debug";
+import type {
+  ExtensionMessage,
+  MRUPosition,
+  UpdatePositionMessage,
+} from "./types";
+import { MAX_MRU_STACK_SIZE } from "./types";
 
 // Initialize debug logging
 initDebug();
@@ -24,6 +30,28 @@ function isTrackableUrl(url: string | undefined): boolean {
   // Only allow http and https URLs - these are the only schemes where content scripts reliably run
   // This excludes: chrome://, chrome-extension://, edge://, about:, data:, blob:, javascript:, file://, devtools://, etc.
   return url.startsWith("http://") || url.startsWith("https://");
+}
+
+/**
+ * Sends a message to a tab's content script with error handling
+ * Returns true if successful, false if tab wasn't ready
+ */
+async function sendMessageToTab(
+  tabId: number,
+  message: ExtensionMessage,
+): Promise<boolean> {
+  try {
+    await chrome.tabs.sendMessage(tabId, message);
+    log(`[Tab Highlighter BG] ✓ Successfully sent to tab ${tabId}`);
+    return true;
+  } catch {
+    // Tab might not have content script loaded yet, or be a chrome:// page
+    // This is normal and not an error
+    log(
+      `[Tab Highlighter BG] ⓘ Tab ${tabId} not ready (content script not loaded yet - this is normal)`,
+    );
+    return false;
+  }
 }
 
 /**
@@ -59,9 +87,9 @@ async function updateMRU(tabId: number): Promise<void> {
   // Add to the front
   mruStack.unshift(tabId);
 
-  // Keep only last 4 tabs
-  if (mruStack.length > 4) {
-    mruStack = mruStack.slice(0, 4);
+  // Keep only last N tabs
+  if (mruStack.length > MAX_MRU_STACK_SIZE) {
+    mruStack = mruStack.slice(0, MAX_MRU_STACK_SIZE);
   }
 
   log("[Tab Highlighter BG] Updated MRU stack:", mruStack);
@@ -85,27 +113,20 @@ async function broadcastPositions(removedTabs: number[] = []): Promise<void> {
   // Send positions to tabs in the MRU stack
   for (let index = 0; index < mruStack.length; index++) {
     const tabId = mruStack[index];
-    const position = index + 1; // 1-based: 1=current, 2=1 back, 3=2 back, 4=3 back
+    const position = (index + 1) as MRUPosition; // 1-based: 1=current, 2=1 back, 3=2 back, 4=3 back
 
     log(
       `[Tab Highlighter BG] Sending position ${position} to tab ${tabId}`,
     );
 
-    try {
-      await chrome.tabs.sendMessage(tabId, {
-        type: "UPDATE_POSITION",
-        position: position,
-        mruStack: [...mruStack], // Include full stack for debugging
-        timestamp: Date.now(),
-      });
-      log(`[Tab Highlighter BG] ✓ Successfully sent to tab ${tabId}`);
-    } catch {
-      // Tab might not have content script loaded yet, or be a chrome:// page
-      // This is normal and not an error - just means the tab hasn't loaded the content script yet
-      log(
-        `[Tab Highlighter BG] ⓘ Tab ${tabId} not ready (content script not loaded yet - this is normal)`,
-      );
-    }
+    const message: UpdatePositionMessage = {
+      type: "UPDATE_POSITION",
+      position: position,
+      mruStack: [...mruStack],
+      timestamp: Date.now(),
+    };
+
+    await sendMessageToTab(tabId, message);
   }
 
   // Tell tabs that were removed from MRU to clear their indicators
@@ -114,19 +135,14 @@ async function broadcastPositions(removedTabs: number[] = []): Promise<void> {
       `[Tab Highlighter BG] Telling tab ${tabId} to remove indicator (fell off MRU stack)`,
     );
 
-    try {
-      await chrome.tabs.sendMessage(tabId, {
-        type: "UPDATE_POSITION",
-        position: 0, // 0 means remove indicator
-        mruStack: [...mruStack],
-        timestamp: Date.now(),
-      });
-      log(`[Tab Highlighter BG] ✓ Successfully sent to tab ${tabId}`);
-    } catch {
-      log(
-        `[Tab Highlighter BG] ⓘ Tab ${tabId} not ready (this is normal)`,
-      );
-    }
+    const message: UpdatePositionMessage = {
+      type: "UPDATE_POSITION",
+      position: 0, // 0 means remove indicator
+      mruStack: [...mruStack],
+      timestamp: Date.now(),
+    };
+
+    await sendMessageToTab(tabId, message);
   }
 
   log("[Tab Highlighter BG] Broadcast complete");
@@ -183,29 +199,33 @@ chrome.windows.onFocusChanged.addListener((windowId) => {
  * Clears all stale indicators from all tabs and initializes MRU with active tab
  */
 async function initializeMRU(): Promise<void> {
-  log("[Tab Highlighter BG] Initializing - clearing stale indicators from all tabs");
+  log(
+    "[Tab Highlighter BG] Initializing - clearing stale indicators from all tabs",
+  );
 
   // Get ALL tabs and clear any stale indicators
   const allTabs = await chrome.tabs.query({});
   for (const tab of allTabs) {
     if (tab.id) {
-      try {
-        await chrome.tabs.sendMessage(tab.id, {
-          type: "UPDATE_POSITION",
-          position: 0, // Clear all indicators
-          mruStack: [],
-          timestamp: Date.now(),
-        });
-      } catch {
-        // Tab might not have content script loaded - this is fine
-      }
+      const message: UpdatePositionMessage = {
+        type: "UPDATE_POSITION",
+        position: 0, // Clear all indicators
+        mruStack: [],
+        timestamp: Date.now(),
+      };
+      await sendMessageToTab(tab.id, message);
     }
   }
 
-  log("[Tab Highlighter BG] Cleared stale indicators, now initializing with active tab");
+  log(
+    "[Tab Highlighter BG] Cleared stale indicators, now initializing with active tab",
+  );
 
   // Now initialize with currently active tab
-  const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true });
+  const activeTabs = await chrome.tabs.query({
+    active: true,
+    currentWindow: true,
+  });
   if (activeTabs[0]) {
     updateMRU(activeTabs[0].id!);
   }
@@ -219,18 +239,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const tabId = sender.tab.id;
     const position = mruStack.indexOf(tabId);
 
-    if (position >= 0 && position < 4) {
+    if (position >= 0 && position < MAX_MRU_STACK_SIZE) {
       // Tab is in MRU stack at position (0-indexed)
       sendResponse({
         success: true,
-        position: position + 1, // Convert to 1-indexed
+        position: (position + 1) as MRUPosition, // Convert to 1-indexed
         mruStack: [...mruStack],
       });
     } else {
       // Tab is not in MRU stack
       sendResponse({
         success: true,
-        position: 0,
+        position: 0 as MRUPosition,
         mruStack: [...mruStack],
       });
     }

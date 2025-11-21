@@ -6,27 +6,21 @@
  */
 
 import { initDebug, log } from "./debug";
+import { INDICATORS } from "./types";
+import type { MRUPosition, UpdatePositionMessage } from "./types";
 
 // Initialize debug logging
 initDebug();
 
-// MRU Position Emojis for title (rainbow order: blue to red)
-const INDICATORS: Record<number, string> = {
-  1: "🟦", // Blue - current/active
-  2: "🟩", // Green - recent
-  3: "🟧", // Orange - older
-  4: "🟥", // Red - oldest
-};
-
 // Store the original title to restore it when tab loses MRU position
 let originalTitle: string = document.title;
-let currentPosition: number = 0; // 0 = no position, 1-4 = MRU positions
+let currentPosition: MRUPosition = 0; // 0 = no position, 1-4 = MRU positions
 let extensionContextInvalidated: boolean = false; // Track if extension was reloaded
 
 /**
  * Adds the MRU indicator to the title
  */
-function setPosition(position: number): void {
+function setPosition(position: MRUPosition): void {
   if (position < 1 || position > 4) {
     removeIndicator();
     return;
@@ -41,8 +35,8 @@ function setPosition(position: number): void {
     if (oldPosition === 0) {
       originalTitle = document.title;
     } else {
-      // Remove old indicator from current title to get original
-      const oldIndicator = INDICATORS[oldPosition];
+      // Remove old indicator from current title to get original (oldPosition is 1-4 here)
+      const oldIndicator = INDICATORS[oldPosition as Exclude<MRUPosition, 0>];
       if (document.title.startsWith(oldIndicator)) {
         originalTitle = document.title.substring(oldIndicator.length);
       }
@@ -51,12 +45,11 @@ function setPosition(position: number): void {
     // Update to new position
     currentPosition = position;
 
-    // Add new indicator at the beginning
-    document.title = INDICATORS[position] + originalTitle;
+    // Add new indicator at the beginning (position is guaranteed to be 1-4 here)
+    const indicator = INDICATORS[position as Exclude<MRUPosition, 0>];
+    document.title = indicator + originalTitle;
 
-    log(
-      `[Tab Highlighter] Set position ${position} with ${INDICATORS[position]}`,
-    );
+    log(`[Tab Highlighter] Set position ${position} with ${indicator}`);
   }
 }
 
@@ -82,9 +75,10 @@ function removeIndicator(): void {
 const titleObserver = new MutationObserver((mutations) => {
   for (const mutation of mutations) {
     if (mutation.type === "childList" && currentPosition > 0) {
-      // Title changed while we have a position
+      // Title changed while we have a position (currentPosition is 1-4 here)
       const currentTitle = document.title;
-      const currentIndicator = INDICATORS[currentPosition];
+      const currentIndicator =
+        INDICATORS[currentPosition as Exclude<MRUPosition, 0>];
 
       // If the title doesn't have our indicator but should
       if (!currentTitle.startsWith(currentIndicator)) {
@@ -120,9 +114,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   });
 
   if (message.type === "UPDATE_POSITION") {
-    const position = message.position;
-    const mruStack = message.mruStack || [];
-    const timestamp = message.timestamp || Date.now();
+    const updateMessage = message as UpdatePositionMessage;
+    const position = updateMessage.position;
+    const mruStack = updateMessage.mruStack || [];
+    const timestamp = updateMessage.timestamp || Date.now();
 
     log(
       `[Tab Highlighter] UPDATE_POSITION: ${position}, MRU stack: ${mruStack}, timestamp: ${timestamp}`,
@@ -273,11 +268,11 @@ document.addEventListener("visibilitychange", () => {
 window.addEventListener("focus", () => {
   // When window regains focus, re-apply our indicator if we have a position
   if (currentPosition > 0) {
-    const currentIndicator = INDICATORS[currentPosition];
+    // currentPosition is 1-4 here
+    const currentIndicator =
+      INDICATORS[currentPosition as Exclude<MRUPosition, 0>];
     if (!document.title.startsWith(currentIndicator)) {
-      log(
-        "[Tab Highlighter] Window focused, restoring indicator...",
-      );
+      log("[Tab Highlighter] Window focused, restoring indicator...");
       document.title = currentIndicator + originalTitle;
     }
   }
