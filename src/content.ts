@@ -26,27 +26,42 @@ function setPosition(position: MRUPosition): void {
     return;
   }
 
-  // If position changed, update everything
-  if (currentPosition !== position) {
+  const indicator = INDICATORS[position as Exclude<MRUPosition, 0>];
+
+  // Check if we need to update (position changed OR title doesn't have the indicator)
+  const needsUpdate =
+    currentPosition !== position || !document.title.startsWith(indicator);
+
+  if (needsUpdate) {
     // Save the old position before updating
     const oldPosition = currentPosition;
 
     // Store original title if switching from no-position to position
     if (oldPosition === 0) {
       originalTitle = document.title;
-    } else {
-      // Remove old indicator from current title to get original (oldPosition is 1-4 here)
+    } else if (currentPosition !== position) {
+      // Remove old indicator from current title to get original (only if position changed)
       const oldIndicator = INDICATORS[oldPosition as Exclude<MRUPosition, 0>];
       if (document.title.startsWith(oldIndicator)) {
         originalTitle = document.title.substring(oldIndicator.length);
       }
+    } else {
+      // Position same but indicator missing - title was changed externally
+      // Extract the current title as the new original (removing any stray indicators)
+      let title = document.title;
+      for (const ind of Object.values(INDICATORS)) {
+        if (title.startsWith(ind)) {
+          title = title.substring(ind.length);
+          break;
+        }
+      }
+      originalTitle = title;
     }
 
     // Update to new position
     currentPosition = position;
 
     // Add new indicator at the beginning (position is guaranteed to be 1-4 here)
-    const indicator = INDICATORS[position as Exclude<MRUPosition, 0>];
     document.title = indicator + originalTitle;
 
     log(`[Tab Highlighter] Set position ${position} with ${indicator}`);

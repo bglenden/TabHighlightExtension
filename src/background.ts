@@ -181,17 +181,26 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   }
 });
 
-// Listen for window focus changes (helps wake up service worker)
-chrome.windows.onFocusChanged.addListener((windowId) => {
+// Listen for window focus changes (helps wake up service worker and restore suspended tabs)
+chrome.windows.onFocusChanged.addListener(async (windowId) => {
   if (windowId !== chrome.windows.WINDOW_ID_NONE) {
     log(
-      "[Tab Highlighter BG] Window focus changed, checking active tab",
+      "[Tab Highlighter BG] Window focus changed, updating MRU and rebroadcasting to all tabs",
     );
-    chrome.tabs.query({ active: true, windowId: windowId }).then((tabs) => {
-      if (tabs[0]) {
-        updateMRU(tabs[0].id!);
-      }
-    });
+
+    // Update MRU with currently active tab
+    const tabs = await chrome.tabs.query({ active: true, windowId: windowId });
+    if (tabs[0]) {
+      await updateMRU(tabs[0].id!);
+    }
+
+    // Force rebroadcast to all tabs to restore indicators that may have been
+    // lost while window was on another virtual desktop or in background
+    // This is important because suspended tabs might not have processed previous messages
+    log(
+      "[Tab Highlighter BG] Force rebroadcasting positions to restore any lost indicators",
+    );
+    await broadcastPositions([]);
   }
 });
 
