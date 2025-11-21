@@ -267,6 +267,23 @@ document.addEventListener("visibilitychange", () => {
 });
 
 /**
+ * Listen for window focus to restore indicators after switching virtual desktops
+ * This handles the case where Chrome suspends content scripts when window is off-screen
+ */
+window.addEventListener("focus", () => {
+  // When window regains focus, re-apply our indicator if we have a position
+  if (currentPosition > 0) {
+    const currentIndicator = INDICATORS[currentPosition];
+    if (!document.title.startsWith(currentIndicator)) {
+      log(
+        "[Tab Highlighter] Window focused, restoring indicator...",
+      );
+      document.title = currentIndicator + originalTitle;
+    }
+  }
+});
+
+/**
  * Initialize the extension
  */
 function init(): void {
