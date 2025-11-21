@@ -10,12 +10,12 @@ import { initDebug, log } from "./debug";
 // Initialize debug logging
 initDebug();
 
-// MRU Position Emojis for title
+// MRU Position Emojis for title (colored squares for better visibility)
 const INDICATORS: Record<number, string> = {
-  1: "🟢 ",
-  2: "🟡 ",
-  3: "🟠 ",
-  4: "🔴 ",
+  1: "🟩 ",
+  2: "🟨 ",
+  3: "🟧 ",
+  4: "🟥 ",
 };
 
 // Store the original title to restore it when tab loses MRU position
