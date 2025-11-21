@@ -2,7 +2,7 @@
 
 A lightweight Chrome extension that shows your Most Recently Used (MRU) tabs with colored position indicators, making it easy to navigate your browsing history.
 
-**Version**: 1.3.18 | **GitHub**: https://github.com/bglenden/TabHighlightExtension
+**Version**: 1.3.19 | **GitHub**: https://github.com/bglenden/TabHighlightExtension
 
 ## Why This Extension?
 
@@ -79,6 +79,23 @@ The extension tracks your Most Recently Used (MRU) tabs and assigns position ind
 - After installing or reloading the extension, **refresh your tabs** to activate the indicators
 - The extension only tracks http:// and https:// pages
 - Chrome's security model prevents extensions from running on `chrome://` pages, extension pages, and the Chrome Web Store
+
+## Debug Logging
+
+Need to troubleshoot an issue? The extension includes optional debug logging:
+
+1. **Click the extension icon** in your toolbar
+2. **Check "Enable debug logging"** in the popup
+3. **Open browser console** (F12 or Cmd+Option+I) to see detailed logs
+4. **Uncheck to disable** when done
+
+Debug logs show:
+- MRU stack updates
+- Position assignments to tabs
+- Favicon and title changes
+- Tab activation events
+
+The setting persists across browser sessions and works without reloading tabs.
 
 ## Privacy
 
