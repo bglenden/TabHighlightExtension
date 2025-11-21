@@ -336,6 +336,28 @@ titleObserver.observe(titleElement, {
 4. **Test changes** by switching between tabs
 5. **Check console** for errors (open DevTools on any page, content script runs in page context)
 
+### ⚠️ IMPORTANT: Version Number Updates
+
+**ALWAYS update the version number in `package.json` before committing bug fixes or new features.**
+
+Version numbering follows semantic versioning (MAJOR.MINOR.PATCH):
+- **PATCH** (1.3.11 → 1.3.12): Bug fixes, minor improvements
+- **MINOR** (1.3.0 → 1.4.0): New features, significant enhancements
+- **MAJOR** (1.0.0 → 2.0.0): Breaking changes, major rewrites
+
+**Before every commit:**
+1. Update `version` field in `package.json`
+2. Run `npm run build` to regenerate `dist/manifest.json` with new version
+3. Commit with descriptive message including version number
+
+**Example:**
+```bash
+# Edit package.json version from 1.3.11 to 1.3.12
+npm run build
+git add .
+git commit -m "v1.3.12: Fix stale indicators on chrome:// pages"
+```
+
 ### Git Pre-commit Hook
 
 A pre-commit hook is configured to automatically run `npm run lint` before every commit, preventing commits with linting errors.

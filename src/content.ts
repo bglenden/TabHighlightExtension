@@ -365,6 +365,52 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 /**
+ * Query and verify position when tab becomes visible (self-healing)
+ */
+async function verifyPosition(): Promise<void> {
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: "GET_MY_POSITION",
+    });
+
+    if (response && response.success) {
+      const correctPosition = response.position;
+
+      // If our position doesn't match what it should be, correct it
+      if (currentPosition !== correctPosition) {
+        console.log(
+          `[Tab Highlighter] Position mismatch detected: have ${currentPosition}, should be ${correctPosition}. Correcting...`,
+        );
+
+        if (correctPosition >= 1 && correctPosition <= 4) {
+          setPosition(correctPosition);
+        } else {
+          removeIndicator();
+        }
+      } else {
+        console.log(
+          `[Tab Highlighter] Position verified: ${currentPosition} is correct`,
+        );
+      }
+    }
+  } catch (error) {
+    console.warn("[Tab Highlighter] Failed to verify position:", error);
+  }
+}
+
+/**
+ * Listen for visibility changes to self-heal stale indicators
+ */
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) {
+    console.log(
+      "[Tab Highlighter] Tab became visible, verifying position...",
+    );
+    verifyPosition();
+  }
+});
+
+/**
  * Initialize the extension
  */
 function init(): void {

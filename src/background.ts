@@ -10,10 +10,40 @@ let mruStack: number[] = [];
 let previousMruStack: number[] = [];
 
 /**
+ * Check if a tab URL is trackable (can run content scripts)
+ * Uses allowlist approach: only http:// and https:// URLs can run content scripts
+ */
+function isTrackableUrl(url: string | undefined): boolean {
+  if (!url) return false;
+
+  // Only allow http and https URLs - these are the only schemes where content scripts reliably run
+  // This excludes: chrome://, chrome-extension://, edge://, about:, data:, blob:, javascript:, file://, devtools://, etc.
+  return url.startsWith("http://") || url.startsWith("https://");
+}
+
+/**
  * Updates the MRU stack when a tab becomes active
  */
-function updateMRU(tabId: number): void {
+async function updateMRU(tabId: number): Promise<void> {
   console.log("[Tab Highlighter BG] Tab activated:", tabId);
+
+  // Get tab info to check if it's trackable
+  try {
+    const tab = await chrome.tabs.get(tabId);
+
+    if (!isTrackableUrl(tab.url)) {
+      console.log(
+        `[Tab Highlighter BG] Tab ${tabId} has untrackable URL: ${tab.url}, skipping MRU update`,
+      );
+      return;
+    }
+  } catch (error) {
+    console.warn(
+      `[Tab Highlighter BG] Failed to get tab ${tabId} info:`,
+      error,
+    );
+    return;
+  }
 
   // Save previous stack to detect tabs that fell off
   previousMruStack = [...mruStack];
@@ -175,6 +205,34 @@ async function initializeMRU(): Promise<void> {
     updateMRU(activeTabs[0].id!);
   }
 }
+
+/**
+ * Message handler for content scripts to query their position
+ */
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "GET_MY_POSITION" && sender.tab?.id) {
+    const tabId = sender.tab.id;
+    const position = mruStack.indexOf(tabId);
+
+    if (position >= 0 && position < 4) {
+      // Tab is in MRU stack at position (0-indexed)
+      sendResponse({
+        success: true,
+        position: position + 1, // Convert to 1-indexed
+        mruStack: [...mruStack],
+      });
+    } else {
+      // Tab is not in MRU stack
+      sendResponse({
+        success: true,
+        position: 0,
+        mruStack: [...mruStack],
+      });
+    }
+
+    return true; // Keep channel open for async response
+  }
+});
 
 // Service worker startup
 chrome.runtime.onStartup.addListener(() => {
