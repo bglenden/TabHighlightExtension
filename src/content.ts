@@ -10,12 +10,12 @@ import { initDebug, log } from "./debug";
 // Initialize debug logging
 initDebug();
 
-// MRU Position Emojis for title (double squares for better visibility)
+// MRU Position Emojis for title (cool to warm progression)
 const INDICATORS: Record<number, string> = {
-  1: "🟩🟩",
-  2: "🟨🟨",
-  3: "🟧🟧",
-  4: "🟥🟥",
+  1: "🟩", // Green - current/active
+  2: "🟦", // Blue - recent
+  3: "🟧", // Orange - older
+  4: "🟥", // Red - oldest
 };
 
 // Store the original title to restore it when tab loses MRU position
