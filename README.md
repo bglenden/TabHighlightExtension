@@ -2,7 +2,7 @@
 
 A lightweight Chrome extension that shows your Most Recently Used (MRU) tabs with colored position indicators, making it easy to navigate your browsing history.
 
-**Version**: 1.3.19 | **GitHub**: https://github.com/bglenden/TabHighlightExtension
+**Version**: 1.3.21 | **GitHub**: https://github.com/bglenden/TabHighlightExtension
 
 ## Why This Extension?
 
@@ -10,17 +10,17 @@ When you have many tabs open, it's helpful to see which tabs you've used most re
 
 ## Features
 
-- **MRU Position Indicators**: Shows numbered colored circles for your 4 most recent tabs
+- **MRU Position Indicators**: Shows colored indicators for your 4 most recent tabs
   - 🟢 Position 1 (Green): Currently active tab
   - 🟡 Position 2 (Yellow): Last tab you viewed
   - 🟠 Position 3 (Orange): 2 tabs back
   - 🔴 Position 4 (Red): 3 tabs back
-- **Title Indicators**: Adds colored emoji to the end of tab titles
-- **Favicon Replacement**: Replaces favicons with numbered colored circles showing position
+- **Title Indicators**: Adds colored emoji at the beginning of tab titles for instant visibility
 - **Automatic Updates**: Indicators update instantly as you switch tabs
-- **Lightweight**: Minimal resource usage, no performance impact
+- **Lightweight**: Minimal resource usage (~2.7 KiB), no performance impact
 - **Privacy-Focused**: No data collection, tracking, or external requests
 - **Works Everywhere**: Runs on all http/https websites automatically
+- **Bookmark-Safe**: No favicon modification prevents bookmark icon contamination
 
 ## Installation
 
@@ -73,7 +73,7 @@ When you browse from Google → GitHub → Gmail, your tabs show:
 
 ## How It Works
 
-The extension tracks your Most Recently Used (MRU) tabs and assigns position indicators (1-4) based on how recently you viewed them. Both the tab title and favicon update to show the position with color-coded numbered circles.
+The extension tracks your Most Recently Used (MRU) tabs and assigns position indicators (1-4) based on how recently you viewed them. The tab title shows a colored emoji at the beginning, making it easy to spot even when the title is truncated.
 
 **Important Note**:
 - After installing or reloading the extension, **refresh your tabs** to activate the indicators
@@ -92,7 +92,7 @@ Need to troubleshoot an issue? The extension includes optional debug logging:
 Debug logs show:
 - MRU stack updates
 - Position assignments to tabs
-- Favicon and title changes
+- Title changes
 - Tab activation events
 
 The setting persists across browser sessions and works without reloading tabs.
