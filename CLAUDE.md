@@ -12,7 +12,7 @@
 ### What's Working
 
 ✅ **MRU Position Tracking**: Tracks last 4 active tabs with positions 1-4
-✅ **Color-coded Indicators**: 🟩 (green/1), 🟦 (blue/2), 🟧 (orange/3), 🟥 (red/4)
+✅ **Color-coded Indicators**: 🟦 (blue/1), 🟩 (green/2), 🟧 (orange/3), 🟥 (red/4)
 ✅ **Title indicators**: Colored square emoji appears at the BEGINNING of tab titles
 ✅ **Background service worker**: Maintains MRU stack and broadcasts position updates
 ✅ **All websites work correctly**: Including x.com (Twitter), Google, CNN, and all tested sites

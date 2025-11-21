@@ -10,10 +10,10 @@ import { initDebug, log } from "./debug";
 // Initialize debug logging
 initDebug();
 
-// MRU Position Emojis for title (cool to warm progression)
+// MRU Position Emojis for title (rainbow order: blue to red)
 const INDICATORS: Record<number, string> = {
-  1: "🟩", // Green - current/active
-  2: "🟦", // Blue - recent
+  1: "🟦", // Blue - current/active
+  2: "🟩", // Green - recent
   3: "🟧", // Orange - older
   4: "🟥", // Red - oldest
 };

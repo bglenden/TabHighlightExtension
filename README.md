@@ -11,8 +11,8 @@ When you have many tabs open, it's helpful to see which tabs you've used most re
 ## Features
 
 - **MRU Position Indicators**: Shows colored square indicators for your 4 most recent tabs
-  - 🟩 Position 1 (Green): Currently active tab
-  - 🟦 Position 2 (Blue): Last tab you viewed
+  - 🟦 Position 1 (Blue): Currently active tab
+  - 🟩 Position 2 (Green): Last tab you viewed
   - 🟧 Position 3 (Orange): 2 tabs back
   - 🟥 Position 4 (Red): 3 tabs back
 - **Title Indicators**: Adds colored square emoji at the beginning of tab titles for instant visibility
@@ -55,8 +55,8 @@ When you have many tabs open, it's helpful to see which tabs you've used most re
 
 Once installed, the extension works automatically:
 
-1. **Active tab** - Shows 🟩 (green square)
-2. **Switch to another tab** - Previous tab becomes 🟦 (blue square)
+1. **Active tab** - Shows 🟦 (blue square)
+2. **Switch to another tab** - Previous tab becomes 🟩 (green square)
 3. **Keep browsing** - Your last 4 tabs show positions 1-4 with color-coded squares
 4. **Navigate back** - Easily see which tabs you recently visited
 
@@ -65,8 +65,8 @@ Once installed, the extension works automatically:
 When you browse from Google → GitHub → Gmail, your tabs show:
 
 ```
-🟩Gmail - Inbox (position 1 - current)
-🟦GitHub - Repository (position 2 - 1 back)
+🟦Gmail - Inbox (position 1 - current)
+🟩GitHub - Repository (position 2 - 1 back)
 🟧Google Search (position 3 - 2 back)
 🟥News Site (position 4 - 3 back)
 ```
