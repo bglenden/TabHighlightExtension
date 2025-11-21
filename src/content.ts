@@ -5,6 +5,11 @@
  * Shows numbered colored circles: 1=green (current), 2=yellow, 3=orange, 4=red
  */
 
+import { initDebug, log } from "./debug";
+
+// Initialize debug logging
+initDebug();
+
 // MRU Position Favicons (SVG with number inside, black text)
 const FAVICONS: Record<number, string> = {
   1: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="%234CAF50"/><text x="8" y="12" font-size="10" fill="%23000000" text-anchor="middle" font-weight="bold" font-family="Arial,sans-serif">1</text></svg>',
@@ -37,7 +42,7 @@ function logFaviconState(context: string): void {
     'link[data-tab-highlighter="true"]',
   );
 
-  console.log(`[Tab Highlighter] ${context}`, {
+  log(`[Tab Highlighter] ${context}`, {
     currentPosition,
     documentHidden: document.hidden,
     documentTitle: document.title,
@@ -226,7 +231,7 @@ function setPosition(position: number): void {
     setPositionFavicon(position);
     startFaviconEnforcement();
 
-    console.log(
+    log(
       `[Tab Highlighter] Set position ${position} with ${INDICATORS[position]}`,
     );
     logFaviconState(`After setPosition(${position})`);
@@ -238,7 +243,7 @@ function setPosition(position: number): void {
  */
 function removeIndicator(): void {
   if (currentPosition > 0) {
-    console.log(
+    log(
       `[Tab Highlighter] Removing position ${currentPosition} indicator`,
     );
 
@@ -298,7 +303,7 @@ const faviconObserver = new MutationObserver((mutations) => {
         target.href !== FAVICONS[currentPosition]
       ) {
         // Site changed the favicon, re-apply our position favicon
-        console.log(
+        log(
           "[Tab Highlighter] Site modified favicon href, re-applying position favicon",
         );
         setPositionFavicon(currentPosition);
@@ -313,7 +318,7 @@ const faviconObserver = new MutationObserver((mutations) => {
             link.rel.includes("icon") &&
             link.href !== FAVICONS[currentPosition]
           ) {
-            console.log(
+            log(
               "[Tab Highlighter] Site added new favicon element, re-applying position favicon",
             );
             setPositionFavicon(currentPosition);
@@ -333,8 +338,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
 
-  console.log("[Tab Highlighter] Received message:", message);
-  console.log("[Tab Highlighter] Current state before update:", {
+  log("[Tab Highlighter] Received message:", message);
+  log("[Tab Highlighter] Current state before update:", {
     currentPosition,
     documentTitle: document.title,
     documentHidden: document.hidden,
@@ -345,7 +350,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const mruStack = message.mruStack || [];
     const timestamp = message.timestamp || Date.now();
 
-    console.log(
+    log(
       `[Tab Highlighter] UPDATE_POSITION: ${position}, MRU stack: ${mruStack}, timestamp: ${timestamp}`,
     );
 
@@ -355,7 +360,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       removeIndicator();
     }
 
-    console.log("[Tab Highlighter] Position update complete:", {
+    log("[Tab Highlighter] Position update complete:", {
       newPosition: currentPosition,
       documentTitle: document.title,
     });
@@ -406,7 +411,7 @@ function handleContextInvalidation(): void {
   if (extensionContextInvalidated) return; // Already handled
 
   extensionContextInvalidated = true;
-  console.log(
+  log(
     "[Tab Highlighter] Extension was reloaded. This content script will stop. Please refresh the page to get the new version.",
   );
 
@@ -450,7 +455,7 @@ async function verifyPosition(): Promise<void> {
 
       // If our position doesn't match what it should be, correct it
       if (currentPosition !== correctPosition) {
-        console.log(
+        log(
           `[Tab Highlighter] Position mismatch detected: have ${currentPosition}, should be ${correctPosition}. Correcting...`,
         );
 
@@ -460,7 +465,7 @@ async function verifyPosition(): Promise<void> {
           removeIndicator();
         }
       } else {
-        console.log(
+        log(
           `[Tab Highlighter] Position verified: ${currentPosition} is correct`,
         );
       }
@@ -479,7 +484,7 @@ async function verifyPosition(): Promise<void> {
  */
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) {
-    console.log(
+    log(
       "[Tab Highlighter] Tab became visible, verifying position...",
     );
     // Call verifyPosition and catch any unhandled rejections
@@ -494,7 +499,7 @@ document.addEventListener("visibilitychange", () => {
  * Initialize the extension
  */
 function init(): void {
-  console.log("[Tab Highlighter] Initializing extension (MRU mode)");
+  log("[Tab Highlighter] Initializing extension (MRU mode)");
 
   // Store original favicon
   const favicon = getFaviconElement();
@@ -505,7 +510,7 @@ function init(): void {
   // Clean up any leftover indicators from previous session
   // (Browser may have cached old favicons/titles from before restart)
   removeIndicator();
-  console.log(
+  log(
     "[Tab Highlighter] Cleaned up any cached indicators from previous session",
   );
 
@@ -530,7 +535,7 @@ function init(): void {
     attributeFilter: ["href"],
   });
 
-  console.log("[Tab Highlighter] Extension initialized successfully");
+  log("[Tab Highlighter] Extension initialized successfully");
 }
 
 // Start the extension when DOM is ready

@@ -1,7 +1,35 @@
 /**
  * Popup script for Active Tab Highlighter
- * Provides UI for reloading all tabs
+ * Provides UI for reloading all tabs and toggling debug logging
  */
+
+import { initDebug, log, setDebugEnabled } from "./debug";
+
+// Initialize debug logging
+initDebug();
+
+// Initialize debug checkbox
+async function initDebugCheckbox() {
+  const checkbox = document.getElementById(
+    "debugCheckbox",
+  ) as HTMLInputElement;
+  if (!checkbox) return;
+
+  // Load current debug state
+  const result = await chrome.storage.local.get("debugLoggingEnabled");
+  checkbox.checked = result.debugLoggingEnabled ?? false;
+
+  // Listen for changes
+  checkbox.addEventListener("change", async () => {
+    await setDebugEnabled(checkbox.checked);
+    log(
+      `[Tab Highlighter Popup] Debug logging ${checkbox.checked ? "enabled" : "disabled"}`,
+    );
+  });
+}
+
+// Initialize on load
+initDebugCheckbox();
 
 document.getElementById("reloadBtn")?.addEventListener("click", async () => {
   const button = document.getElementById("reloadBtn") as HTMLButtonElement;
@@ -60,8 +88,8 @@ document.getElementById("reloadBtn")?.addEventListener("click", async () => {
       }, 2000);
     };
 
-    console.log(`[Tab Highlighter Popup] Found ${tabs.length} tabs total`);
-    console.log(
+    log(`[Tab Highlighter Popup] Found ${tabs.length} tabs total`);
+    log(
       `[Tab Highlighter Popup] Tab details:`,
       tabs.map((t) => ({
         id: t.id,
@@ -81,20 +109,18 @@ document.getElementById("reloadBtn")?.addEventListener("click", async () => {
         !tab.url.startsWith("chrome://") &&
         !tab.url.startsWith("chrome-extension://")
       ) {
-        console.log(
-          `[Tab Highlighter Popup] Reloading tab ${tab.id}: ${tab.url}`,
-        );
+        log(`[Tab Highlighter Popup] Reloading tab ${tab.id}: ${tab.url}`);
         await chrome.tabs.reload(tab.id);
         reloadedCount++;
       } else {
-        console.log(
+        log(
           `[Tab Highlighter Popup] Skipping tab ${tab.id}: ${tab.url || "no URL"} (restricted)`,
         );
         skippedCount++;
       }
     }
 
-    console.log(
+    log(
       `[Tab Highlighter Popup] Reloaded ${reloadedCount} tabs, skipped ${skippedCount} tabs`,
     );
     status.textContent = `✓ Reloaded ${reloadedCount} tabs (skipped ${skippedCount})`;

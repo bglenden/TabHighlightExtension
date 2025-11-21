@@ -5,6 +5,11 @@
  * Maintains a list of the last 4 active tabs and broadcasts their positions.
  */
 
+import { initDebug, log, warn } from "./debug";
+
+// Initialize debug logging
+initDebug();
+
 // MRU stack: most recent tab IDs in order [current, 1 back, 2 back, 3 back]
 let mruStack: number[] = [];
 let previousMruStack: number[] = [];
@@ -25,20 +30,20 @@ function isTrackableUrl(url: string | undefined): boolean {
  * Updates the MRU stack when a tab becomes active
  */
 async function updateMRU(tabId: number): Promise<void> {
-  console.log("[Tab Highlighter BG] Tab activated:", tabId);
+  log("[Tab Highlighter BG] Tab activated:", tabId);
 
   // Get tab info to check if it's trackable
   try {
     const tab = await chrome.tabs.get(tabId);
 
     if (!isTrackableUrl(tab.url)) {
-      console.log(
+      log(
         `[Tab Highlighter BG] Tab ${tabId} has untrackable URL: ${tab.url}, skipping MRU update`,
       );
       return;
     }
   } catch (error) {
-    console.warn(
+    warn(
       `[Tab Highlighter BG] Failed to get tab ${tabId} info:`,
       error,
     );
@@ -59,12 +64,12 @@ async function updateMRU(tabId: number): Promise<void> {
     mruStack = mruStack.slice(0, 4);
   }
 
-  console.log("[Tab Highlighter BG] Updated MRU stack:", mruStack);
+  log("[Tab Highlighter BG] Updated MRU stack:", mruStack);
 
   // Find tabs that were in the previous stack but not in the new one
   const removedTabs = previousMruStack.filter((id) => !mruStack.includes(id));
   if (removedTabs.length > 0) {
-    console.log("[Tab Highlighter BG] Tabs removed from MRU:", removedTabs);
+    log("[Tab Highlighter BG] Tabs removed from MRU:", removedTabs);
   }
 
   // Broadcast updated positions to all tabs
@@ -75,14 +80,14 @@ async function updateMRU(tabId: number): Promise<void> {
  * Broadcasts MRU position to each tab's content script
  */
 async function broadcastPositions(removedTabs: number[] = []): Promise<void> {
-  console.log("[Tab Highlighter BG] Broadcasting positions to tabs...");
+  log("[Tab Highlighter BG] Broadcasting positions to tabs...");
 
   // Send positions to tabs in the MRU stack
   for (let index = 0; index < mruStack.length; index++) {
     const tabId = mruStack[index];
     const position = index + 1; // 1-based: 1=current, 2=1 back, 3=2 back, 4=3 back
 
-    console.log(
+    log(
       `[Tab Highlighter BG] Sending position ${position} to tab ${tabId}`,
     );
 
@@ -93,11 +98,11 @@ async function broadcastPositions(removedTabs: number[] = []): Promise<void> {
         mruStack: [...mruStack], // Include full stack for debugging
         timestamp: Date.now(),
       });
-      console.log(`[Tab Highlighter BG] ✓ Successfully sent to tab ${tabId}`);
+      log(`[Tab Highlighter BG] ✓ Successfully sent to tab ${tabId}`);
     } catch {
       // Tab might not have content script loaded yet, or be a chrome:// page
       // This is normal and not an error - just means the tab hasn't loaded the content script yet
-      console.log(
+      log(
         `[Tab Highlighter BG] ⓘ Tab ${tabId} not ready (content script not loaded yet - this is normal)`,
       );
     }
@@ -105,7 +110,7 @@ async function broadcastPositions(removedTabs: number[] = []): Promise<void> {
 
   // Tell tabs that were removed from MRU to clear their indicators
   for (const tabId of removedTabs) {
-    console.log(
+    log(
       `[Tab Highlighter BG] Telling tab ${tabId} to remove indicator (fell off MRU stack)`,
     );
 
@@ -116,24 +121,24 @@ async function broadcastPositions(removedTabs: number[] = []): Promise<void> {
         mruStack: [...mruStack],
         timestamp: Date.now(),
       });
-      console.log(`[Tab Highlighter BG] ✓ Successfully sent to tab ${tabId}`);
+      log(`[Tab Highlighter BG] ✓ Successfully sent to tab ${tabId}`);
     } catch {
-      console.log(
+      log(
         `[Tab Highlighter BG] ⓘ Tab ${tabId} not ready (this is normal)`,
       );
     }
   }
 
-  console.log("[Tab Highlighter BG] Broadcast complete");
+  log("[Tab Highlighter BG] Broadcast complete");
 }
 
 /**
  * Removes a tab from the MRU stack when it's closed
  */
 function removeFromMRU(tabId: number): void {
-  console.log("[Tab Highlighter BG] Tab closed:", tabId);
+  log("[Tab Highlighter BG] Tab closed:", tabId);
   mruStack = mruStack.filter((id) => id !== tabId);
-  console.log("[Tab Highlighter BG] Updated MRU stack:", mruStack);
+  log("[Tab Highlighter BG] Updated MRU stack:", mruStack);
 
   // Rebroadcast positions to update remaining tabs (no removed tabs in this case since tab is closed)
   broadcastPositions([]);
@@ -141,13 +146,13 @@ function removeFromMRU(tabId: number): void {
 
 // Listen for tab activation (this will wake up the service worker)
 chrome.tabs.onActivated.addListener((activeInfo) => {
-  console.log("[Tab Highlighter BG] onActivated event fired");
+  log("[Tab Highlighter BG] onActivated event fired");
   updateMRU(activeInfo.tabId);
 });
 
 // Listen for tab removal
 chrome.tabs.onRemoved.addListener((tabId) => {
-  console.log("[Tab Highlighter BG] onRemoved event fired");
+  log("[Tab Highlighter BG] onRemoved event fired");
   removeFromMRU(tabId);
 });
 
@@ -155,7 +160,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   // Only update MRU if the tab is currently active
   if (tab.active && changeInfo.status === "complete") {
-    console.log("[Tab Highlighter BG] onUpdated event fired for active tab");
+    log("[Tab Highlighter BG] onUpdated event fired for active tab");
     updateMRU(tabId);
   }
 });
@@ -163,7 +168,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 // Listen for window focus changes (helps wake up service worker)
 chrome.windows.onFocusChanged.addListener((windowId) => {
   if (windowId !== chrome.windows.WINDOW_ID_NONE) {
-    console.log(
+    log(
       "[Tab Highlighter BG] Window focus changed, checking active tab",
     );
     chrome.tabs.query({ active: true, windowId: windowId }).then((tabs) => {
@@ -178,7 +183,7 @@ chrome.windows.onFocusChanged.addListener((windowId) => {
  * Clears all stale indicators from all tabs and initializes MRU with active tab
  */
 async function initializeMRU(): Promise<void> {
-  console.log("[Tab Highlighter BG] Initializing - clearing stale indicators from all tabs");
+  log("[Tab Highlighter BG] Initializing - clearing stale indicators from all tabs");
 
   // Get ALL tabs and clear any stale indicators
   const allTabs = await chrome.tabs.query({});
@@ -197,7 +202,7 @@ async function initializeMRU(): Promise<void> {
     }
   }
 
-  console.log("[Tab Highlighter BG] Cleared stale indicators, now initializing with active tab");
+  log("[Tab Highlighter BG] Cleared stale indicators, now initializing with active tab");
 
   // Now initialize with currently active tab
   const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -236,16 +241,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Service worker startup
 chrome.runtime.onStartup.addListener(() => {
-  console.log("[Tab Highlighter BG] Browser startup detected");
+  log("[Tab Highlighter BG] Browser startup detected");
   initializeMRU();
 });
 
 // Service worker install/update
 chrome.runtime.onInstalled.addListener(() => {
-  console.log("[Tab Highlighter BG] Extension installed/updated");
+  log("[Tab Highlighter BG] Extension installed/updated");
   initializeMRU();
 });
 
 // Initialize on service worker first load
-console.log("[Tab Highlighter BG] Background worker script loaded");
+log("[Tab Highlighter BG] Background worker script loaded");
 initializeMRU();
