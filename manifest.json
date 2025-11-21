@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Active Tab Highlighter",
-  "version": "1.3.30",
+  "version": "1.3.31",
   "description": "Highlights the active tab with a visual indicator to make it easy to identify which tab you're viewing",
   "icons": {
     "16": "icons/icon16.png",

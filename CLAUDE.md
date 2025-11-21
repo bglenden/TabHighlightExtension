@@ -390,29 +390,46 @@ git commit -m "v1.3.12: Fix stale indicators on chrome:// pages"
 
 ### Git Pre-commit Hook
 
-A pre-commit hook is configured to automatically run `npm run lint` before every commit, preventing commits with linting errors.
+A pre-commit hook is configured to enforce version bumps and run lint before every commit:
+- Requires a staged `package.json` version change.
+- Requires `manifest.json` version to match `package.json`.
+- Runs `npm run lint` and blocks on failures.
 
 **Setup (required for each clone):**
 
 ```bash
-# Create the hook file
-cat > .git/hooks/pre-commit << 'EOF'
+bash -c 'cat > .git/hooks/pre-commit << \"EOF\"
 #!/bin/sh
 
-echo "Running lint check..."
-npm run lint
+# Enforce version bump and consistency before committing.
+# 1) package.json must have a staged version change
+# 2) manifest.json version must match package.json
+# 3) Lint must pass
 
-if [ $? -ne 0 ]; then
-  echo "❌ Lint failed. Please fix errors before committing."
+set -e
+
+if ! git diff --cached -- package.json | grep -q \"\\\"version\\\"\"; then
+  echo \"Version bump required: stage a change to package.json version.\"
   exit 1
 fi
 
-echo "✅ Lint passed"
-exit 0
-EOF
+pkg_ver=$(node -e \"console.log(require(\\\"./package.json\\\").version)\" 2>/dev/null || true)
+manifest_ver=$(node -e \"console.log(require(\\\"./manifest.json\\\").version)\" 2>/dev/null || true)
 
-# Make it executable
-chmod +x .git/hooks/pre-commit
+if [ -z \"$pkg_ver\" ] || [ -z \"$manifest_ver\" ]; then
+  echo \"Unable to read versions from package.json/manifest.json.\"
+  exit 1
+fi
+
+if [ \"$pkg_ver\" != \"$manifest_ver\" ]; then
+  echo \"Version mismatch: package.json ($pkg_ver) != manifest.json ($manifest_ver)\"
+  exit 1
+fi
+
+echo \"Running lint check...\"
+npm run lint
+EOF
+chmod +x .git/hooks/pre-commit'
 ```
 
 **Note:** Git hooks are local and not committed to the repository. You'll need to set this up on each machine/clone.
