@@ -305,36 +305,44 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
 });
 
 /**
- * Clears all stale indicators from all tabs and initializes MRU with active tab
+ * Initialize MRU state when the service worker starts.
+ * - Try to restore the saved stack from storage.
+ * - If nothing to restore (first run/clean state), clear all indicators to avoid stale badges.
+ * - Re-seed with the current active tab and broadcast positions.
  */
 async function initializeMRU(): Promise<void> {
-  log(
-    "[Tab Highlighter BG] Initializing - clearing stale indicators from all tabs",
-  );
-
-  // Get ALL tabs and clear any stale indicators
-  const allTabs = await chrome.tabs.query({});
-  for (const tab of allTabs) {
-    if (tab.id) {
-      const message: UpdatePositionMessage = {
-        type: "UPDATE_POSITION",
-        position: 0, // Clear all indicators
-        mruStack: [],
-        timestamp: Date.now(),
-      };
-      await sendMessageToTab(tab.id, message);
-    }
-  }
-
-  log(
-    "[Tab Highlighter BG] Cleared stale indicators, now initializing with active tab",
-  );
+  log("[Tab Highlighter BG] Initializing MRU state");
 
   const restored = await restoreMRUStackFromStorage();
+
+  // Only do a global clear when we have no persisted stack (first run or storage empty).
   if (!restored) {
-    log("[Tab Highlighter BG] No MRU stack restored, seeding with active tab");
+    log(
+      "[Tab Highlighter BG] No MRU stack restored; clearing stale indicators from all tabs",
+    );
+
+    const allTabs = await chrome.tabs.query({});
+    for (const tab of allTabs) {
+      if (tab.id) {
+        const message: UpdatePositionMessage = {
+          type: "UPDATE_POSITION",
+          position: 0, // Clear stale indicators
+          mruStack: [],
+          timestamp: Date.now(),
+        };
+        await sendMessageToTab(tab.id, message);
+      }
+    }
+  } else {
+    log(
+      "[Tab Highlighter BG] MRU stack restored; skipping global clear to avoid wiping indicators",
+    );
+
+    // We have a restored stack—rebroadcast it immediately to refresh indicators.
+    await broadcastPositions([]);
   }
 
+  // Ensure the currently active tab is at the front of the stack
   await seedStackWithActiveTab();
 }
 
