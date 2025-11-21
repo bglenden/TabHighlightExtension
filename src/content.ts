@@ -198,16 +198,15 @@ function setPosition(position: number): void {
 
   // If position changed, update everything
   if (currentPosition !== position) {
+    // Save the old position before updating
+    const oldPosition = currentPosition;
+
     // Store original title if switching from no-position to position
-    if (currentPosition === 0) {
+    if (oldPosition === 0) {
       originalTitle = document.title;
-    }
-
-    currentPosition = position;
-
-    // If there was a previous position, remove that indicator first
-    if (currentPosition > 0) {
-      const oldIndicator = INDICATORS[currentPosition];
+    } else {
+      // Remove old indicator from current title to get original
+      const oldIndicator = INDICATORS[oldPosition];
       if (document.title.endsWith(oldIndicator)) {
         originalTitle = document.title.substring(
           0,
@@ -215,6 +214,9 @@ function setPosition(position: number): void {
         );
       }
     }
+
+    // Update to new position
+    currentPosition = position;
 
     // Add new indicator
     document.title = originalTitle + INDICATORS[position];
