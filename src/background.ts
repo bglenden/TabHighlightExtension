@@ -16,9 +16,29 @@ import { MAX_MRU_STACK_SIZE } from "./types";
 // Initialize debug logging
 initDebug();
 
+// Storage key for breadcrumb count
+const STORAGE_KEY_BREADCRUMB_COUNT = "breadcrumbCount";
+const DEFAULT_BREADCRUMB_COUNT = 1;
+
 // MRU stack: most recent tab IDs in order [current, 1 back, 2 back, 3 back]
 let mruStack: number[] = [];
 let previousMruStack: number[] = [];
+let breadcrumbCount = DEFAULT_BREADCRUMB_COUNT;
+
+/**
+ * Load breadcrumb count setting from storage
+ */
+async function loadBreadcrumbCount(): Promise<void> {
+  try {
+    const result = await chrome.storage.sync.get(STORAGE_KEY_BREADCRUMB_COUNT);
+    breadcrumbCount =
+      result[STORAGE_KEY_BREADCRUMB_COUNT] ?? DEFAULT_BREADCRUMB_COUNT;
+    log("[Tab Highlighter BG] Loaded breadcrumb count:", breadcrumbCount);
+  } catch (error) {
+    warn("[Tab Highlighter BG] Failed to load breadcrumb count:", error);
+    breadcrumbCount = DEFAULT_BREADCRUMB_COUNT;
+  }
+}
 
 /**
  * Persist the current MRU stack so it can be restored if the service worker restarts
@@ -90,7 +110,9 @@ async function restoreMRUStackFromStorage(): Promise<boolean> {
  * the most relevant trackable active tab.
  */
 async function seedStackWithActiveTab(): Promise<void> {
-  const findFirstTrackable = (tabs: chrome.tabs.Tab[]): chrome.tabs.Tab | undefined =>
+  const findFirstTrackable = (
+    tabs: chrome.tabs.Tab[],
+  ): chrome.tabs.Tab | undefined =>
     tabs.find((tab) => Boolean(tab.id) && isTrackableUrl(tab.url));
 
   let activeTabs = await chrome.tabs.query({
@@ -168,10 +190,7 @@ async function updateMRU(tabId: number): Promise<void> {
       return;
     }
   } catch (error) {
-    warn(
-      `[Tab Highlighter BG] Failed to get tab ${tabId} info:`,
-      error,
-    );
+    warn(`[Tab Highlighter BG] Failed to get tab ${tabId} info:`, error);
     return;
   }
 
@@ -184,9 +203,10 @@ async function updateMRU(tabId: number): Promise<void> {
   // Add to the front
   mruStack.unshift(tabId);
 
-  // Keep only last N tabs
-  if (mruStack.length > MAX_MRU_STACK_SIZE) {
-    mruStack = mruStack.slice(0, MAX_MRU_STACK_SIZE);
+  // Keep only the configured number of breadcrumbs (but never exceed MAX_MRU_STACK_SIZE)
+  const effectiveMax = Math.min(breadcrumbCount, MAX_MRU_STACK_SIZE);
+  if (mruStack.length > effectiveMax) {
+    mruStack = mruStack.slice(0, effectiveMax);
   }
 
   await persistMRUStack();
@@ -214,9 +234,7 @@ async function broadcastPositions(removedTabs: number[] = []): Promise<void> {
     const tabId = mruStack[index];
     const position = (index + 1) as MRUPosition; // 1-based: 1=current, 2=1 back, 3=2 back, 4=3 back
 
-    log(
-      `[Tab Highlighter BG] Sending position ${position} to tab ${tabId}`,
-    );
+    log(`[Tab Highlighter BG] Sending position ${position} to tab ${tabId}`);
 
     const message: UpdatePositionMessage = {
       type: "UPDATE_POSITION",
@@ -306,6 +324,7 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
 
 /**
  * Initialize MRU state when the service worker starts.
+ * - Load breadcrumb count setting from storage
  * - Try to restore the saved stack from storage.
  * - If nothing to restore (first run/clean state), clear all indicators to avoid stale badges.
  * - Re-seed with the current active tab and broadcast positions.
@@ -313,6 +332,7 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
 async function initializeMRU(): Promise<void> {
   log("[Tab Highlighter BG] Initializing MRU state");
 
+  await loadBreadcrumbCount();
   const restored = await restoreMRUStackFromStorage();
 
   // Only do a global clear when we have no persisted stack (first run or storage empty).
@@ -371,6 +391,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     return true; // Keep channel open for async response
+  } else if (message.type === "BREADCRUMB_COUNT_CHANGE") {
+    // Handle breadcrumb count change from popup
+    const newCount = message.count;
+    log("[Tab Highlighter BG] Breadcrumb count changed to:", newCount);
+    breadcrumbCount = newCount;
+
+    // Trim MRU stack if new count is smaller
+    const effectiveMax = Math.min(breadcrumbCount, MAX_MRU_STACK_SIZE);
+    if (mruStack.length > effectiveMax) {
+      const removedTabs = mruStack.slice(effectiveMax);
+      mruStack = mruStack.slice(0, effectiveMax);
+      persistMRUStack();
+
+      // Rebroadcast positions with removed tabs
+      broadcastPositions(removedTabs);
+    } else {
+      // Just rebroadcast current positions
+      broadcastPositions([]);
+    }
+
+    sendResponse({ success: true });
+    return true;
   }
 });
 

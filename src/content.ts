@@ -12,16 +12,42 @@ import type { MRUPosition, UpdatePositionMessage } from "./types";
 // Initialize debug logging
 initDebug();
 
+// Storage key for breadcrumb count
+const STORAGE_KEY_BREADCRUMB_COUNT = "breadcrumbCount";
+const DEFAULT_BREADCRUMB_COUNT = 1;
+
 // Store the original title to restore it when tab loses MRU position
 let originalTitle: string = document.title;
 let currentPosition: MRUPosition = 0; // 0 = no position, 1-4 = MRU positions
 let extensionContextInvalidated: boolean = false; // Track if extension was reloaded
+let breadcrumbCount = DEFAULT_BREADCRUMB_COUNT;
+
+/**
+ * Load breadcrumb count setting from storage
+ */
+async function loadBreadcrumbCount(): Promise<void> {
+  try {
+    const result = await chrome.storage.sync.get(STORAGE_KEY_BREADCRUMB_COUNT);
+    breadcrumbCount =
+      result[STORAGE_KEY_BREADCRUMB_COUNT] ?? DEFAULT_BREADCRUMB_COUNT;
+    log("[Tab Highlighter] Loaded breadcrumb count:", breadcrumbCount);
+  } catch (error) {
+    log("[Tab Highlighter] Failed to load breadcrumb count:", error);
+    breadcrumbCount = DEFAULT_BREADCRUMB_COUNT;
+  }
+}
 
 /**
  * Adds the MRU indicator to the title
  */
 function setPosition(position: MRUPosition): void {
   if (position < 1 || position > 4) {
+    removeIndicator();
+    return;
+  }
+
+  // In single breadcrumb mode, only show indicator for position 1
+  if (breadcrumbCount === 1 && position !== 1) {
     removeIndicator();
     return;
   }
@@ -73,9 +99,7 @@ function setPosition(position: MRUPosition): void {
  */
 function removeIndicator(): void {
   if (currentPosition > 0) {
-    log(
-      `[Tab Highlighter] Removing position ${currentPosition} indicator`,
-    );
+    log(`[Tab Highlighter] Removing position ${currentPosition} indicator`);
 
     // Restore original title
     document.title = originalTitle;
@@ -138,8 +162,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       `[Tab Highlighter] UPDATE_POSITION: ${position}, MRU stack: ${mruStack}, timestamp: ${timestamp}`,
     );
 
+    // Respect breadcrumb count setting
     if (position >= 1 && position <= 4) {
-      setPosition(position);
+      if (breadcrumbCount === 1 && position === 1) {
+        // Single breadcrumb mode: only show for position 1
+        setPosition(position);
+      } else if (breadcrumbCount === 4) {
+        // Four breadcrumb mode: show for positions 1-4
+        setPosition(position);
+      } else {
+        // Position beyond breadcrumb count
+        removeIndicator();
+      }
     } else {
       removeIndicator();
     }
@@ -265,9 +299,7 @@ async function verifyPosition(): Promise<void> {
  */
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) {
-    log(
-      "[Tab Highlighter] Tab became visible, verifying position...",
-    );
+    log("[Tab Highlighter] Tab became visible, verifying position...");
     // Call verifyPosition and catch any unhandled rejections
     // (errors are already handled inside verifyPosition)
     verifyPosition().catch(() => {
@@ -296,8 +328,11 @@ window.addEventListener("focus", () => {
 /**
  * Initialize the extension
  */
-function init(): void {
+async function init(): Promise<void> {
   log("[Tab Highlighter] Initializing extension (MRU mode)");
+
+  // Load breadcrumb count setting
+  await loadBreadcrumbCount();
 
   // Clean up any leftover indicators from previous session
   removeIndicator();
@@ -319,6 +354,28 @@ function init(): void {
 
   log("[Tab Highlighter] Extension initialized successfully");
 }
+
+/**
+ * Listen for storage changes to update breadcrumb count
+ */
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === "sync" && changes[STORAGE_KEY_BREADCRUMB_COUNT]) {
+    const newCount = changes[STORAGE_KEY_BREADCRUMB_COUNT].newValue;
+    log("[Tab Highlighter] Breadcrumb count changed to:", newCount);
+    breadcrumbCount = newCount ?? DEFAULT_BREADCRUMB_COUNT;
+
+    // If we have a position, re-evaluate whether to show indicator
+    if (currentPosition > 0) {
+      if (breadcrumbCount === 1 && currentPosition !== 1) {
+        // Single breadcrumb mode but we're not position 1 - remove indicator
+        removeIndicator();
+      } else if (currentPosition > breadcrumbCount) {
+        // Position beyond new breadcrumb count - remove indicator
+        removeIndicator();
+      }
+    }
+  }
+});
 
 // Start the extension when DOM is ready
 if (document.readyState === "loading") {

@@ -8,6 +8,10 @@ import { initDebug, log, setDebugEnabled } from "./debug";
 // Initialize debug logging
 initDebug();
 
+// Storage key for breadcrumb count
+const STORAGE_KEY_BREADCRUMB_COUNT = "breadcrumbCount";
+const DEFAULT_BREADCRUMB_COUNT = 1;
+
 /**
  * Builds a detailed report of tab discovery for debugging
  */
@@ -112,9 +116,7 @@ function updateUIError(error: unknown): void {
 
 // Initialize debug checkbox
 async function initDebugCheckbox() {
-  const checkbox = document.getElementById(
-    "debugCheckbox",
-  ) as HTMLInputElement;
+  const checkbox = document.getElementById("debugCheckbox") as HTMLInputElement;
   if (!checkbox) return;
 
   // Load current debug state
@@ -130,8 +132,61 @@ async function initDebugCheckbox() {
   });
 }
 
+// Initialize breadcrumb count radio buttons
+async function initBreadcrumbCount() {
+  const breadcrumb1 = document.getElementById(
+    "breadcrumb1",
+  ) as HTMLInputElement;
+  const breadcrumb4 = document.getElementById(
+    "breadcrumb4",
+  ) as HTMLInputElement;
+
+  if (!breadcrumb1 || !breadcrumb4) return;
+
+  // Load current breadcrumb count
+  const result = await chrome.storage.sync.get(STORAGE_KEY_BREADCRUMB_COUNT);
+  const breadcrumbCount =
+    result[STORAGE_KEY_BREADCRUMB_COUNT] ?? DEFAULT_BREADCRUMB_COUNT;
+
+  // Set the appropriate radio button
+  if (breadcrumbCount === 4) {
+    breadcrumb4.checked = true;
+  } else {
+    breadcrumb1.checked = true;
+  }
+
+  // Handle breadcrumb count changes
+  const handleBreadcrumbChange = async (count: number) => {
+    await chrome.storage.sync.set({ [STORAGE_KEY_BREADCRUMB_COUNT]: count });
+    log(`[Tab Highlighter Popup] Breadcrumb count changed to ${count}`);
+
+    // Notify background script of the change
+    try {
+      await chrome.runtime.sendMessage({
+        type: "BREADCRUMB_COUNT_CHANGE",
+        count: count,
+      });
+    } catch (error) {
+      log(`[Tab Highlighter Popup] Failed to notify background script:`, error);
+    }
+  };
+
+  breadcrumb1.addEventListener("change", () => {
+    if (breadcrumb1.checked) {
+      handleBreadcrumbChange(1);
+    }
+  });
+
+  breadcrumb4.addEventListener("change", () => {
+    if (breadcrumb4.checked) {
+      handleBreadcrumbChange(4);
+    }
+  });
+}
+
 // Initialize on load
 initDebugCheckbox();
+initBreadcrumbCount();
 
 document.getElementById("reloadBtn")?.addEventListener("click", async () => {
   const button = document.getElementById("reloadBtn") as HTMLButtonElement;
