@@ -23,3 +23,7 @@ npm-debug.log*
 .env
 .env.local
 AGENTS.md
+
+# AI Assistant configs
+/.claude
+/.gemini/
