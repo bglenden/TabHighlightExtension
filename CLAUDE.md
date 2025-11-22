@@ -460,11 +460,28 @@ titleObserver.observe(titleElement, {
 4. **Test changes** by switching between tabs
 5. **Check console** for errors (open DevTools on any page, content script runs in page context)
 
-### ⚠️ IMPORTANT: Version Number Updates
+### ⚠️ IMPORTANT: Pre-Commit Checklist
 
-**ALWAYS update the version number in `package.json` before committing bug fixes or new features.**
+**ALWAYS complete these steps before every commit:**
+
+1. **Update version number** in `package.json` (for code changes only)
+2. **Update README.md** with user-facing information:
+   - New features and how to use them
+   - Changed behavior that users need to know about
+   - Updated version number in header
+   - Keep it simple and non-technical
+3. **Update CLAUDE.md** with technical/implementation details:
+   - Implementation notes and design decisions
+   - Architecture changes
+   - Developer workflow changes
+   - Updated version number in status section
+   - Add entry to "Recent Features & Changes"
+4. **Run `npm run build`** to regenerate `dist/manifest.json`
+5. **Run `npm run lint`** to check for code quality issues
 
 > **Operational note:** Bump the version for every source code change so you can confirm the new build is loaded in Chrome. After bumping, run `npm run build` so `dist/manifest.json` carries the new number.
+
+> **Documentation note:** Both README.md and CLAUDE.md should be updated in the same commit as the feature/fix. README.md is for users, CLAUDE.md is for developers and AI assistants.
 
 Version numbering follows semantic versioning (MAJOR.MINOR.PATCH):
 
