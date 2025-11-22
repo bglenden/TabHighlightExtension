@@ -1,18 +1,21 @@
 # Active Tab Highlighter - Technical Documentation
 
-## Current Status (v1.3.18)
+## Current Status (v1.3.33)
 
 ### Production Release ✅
 
-**Version**: 1.3.25 (Production)
-**Status**: MRU breadcrumb trail feature - stable
-**Release Date**: 2025-11-20
+**Version**: 1.3.33 (Production)
+**Status**: MRU breadcrumb trail with configurable count - stable
+**Release Date**: 2025-01-20
 **GitHub**: https://github.com/bglenden/TabHighlightExtension
 
 ### What's Working
 
-✅ **MRU Position Tracking**: Tracks last 4 active tabs with positions 1-4
+✅ **Configurable Breadcrumb Count**: Choose between 1 or 4 breadcrumbs (default: 1)
+✅ **Single Breadcrumb Mode**: Only active tab shows 🟦 indicator
+✅ **Four Breadcrumb Mode**: Tracks last 4 active tabs with positions 1-4
 ✅ **Color-coded Indicators**: 🟦 (blue/1), 🟩 (green/2), 🟧 (orange/3), 🟥 (red/4)
+✅ **Persistent Settings**: Breadcrumb count preference saved via chrome.storage.sync
 ✅ **Title indicators**: Colored square emoji appears at the BEGINNING of tab titles
 ✅ **Background service worker**: Maintains MRU stack and broadcasts position updates
 ✅ **All websites work correctly**: Including x.com (Twitter), Google, CNN, and all tested sites
@@ -22,6 +25,7 @@
 ✅ **Code quality**: ESLint configured, lints with 0 errors and 0 warnings
 ✅ **URL filtering**: Only tracks http:// and https:// URLs to avoid errors on protected pages
 ✅ **Bookmark-safe**: No favicon modification prevents bookmark contamination
+✅ **Real-time updates**: Changing breadcrumb count instantly updates all tabs
 
 ### Known Limitations
 
@@ -38,10 +42,12 @@ These are **browser security features**, not bugs. All Chrome extensions have th
 **Reason**: Favicon modification caused bookmark contamination - when users bookmarked pages, Chrome captured the MRU favicon (🟢1, 🟡2, etc.) instead of the original site favicon, polluting bookmark bars and menus.
 
 **What Changed**:
+
 - ❌ **Removed**: Favicon replacement with numbered colored circles
 - ✅ **Kept**: Title indicators with colored square emoji (🟩🟦🟧🟥)
 
 **How to Revert** (if needed for personal use):
+
 ```bash
 git checkout v1.3.19-last-with-favicons
 npm install
@@ -49,10 +55,30 @@ npm run build
 ```
 
 The tagged version `v1.3.19-last-with-favicons` is the last commit with full favicon modification functionality, including:
+
 - SVG favicon generation with numbered circles
 - Favicon enforcement with 500ms interval
 - Original favicon storage and restoration
 - MutationObserver for favicon changes
+
+### Recent Features & Changes
+
+**v1.3.33 - Configurable Breadcrumb Count (2025-01-20)**
+
+- **Feature**: Added user-configurable breadcrumb count setting
+- **Options**: Choose between 1 breadcrumb (default) or 4 breadcrumbs
+- **UI**: Radio buttons in extension popup to select mode
+- **Storage**: Settings persist across browser restarts using `chrome.storage.sync`
+- **Implementation**:
+  - `popup.html`: Added breadcrumb count radio button selector
+  - `popup.ts`: Load/save setting, notify background script of changes
+  - `background.ts`: Load setting on startup, trim MRU stack to configured size, handle setting changes
+  - `content.ts`: Load setting, respect breadcrumb count when displaying indicators, listen for storage changes
+  - Real-time updates: When setting changes, background script immediately rebroadcasts positions to all tabs
+- **User Experience**:
+  - Single breadcrumb mode shows only 🟦 on active tab
+  - Four breadcrumb mode shows full color-coded trail (🟦🟩🟧🟥)
+  - Setting syncs across devices if Chrome sync is enabled
 
 ### Recent Bug Fixes (v1.3.12-1.3.19)
 
@@ -77,7 +103,7 @@ The tagged version `v1.3.19-last-with-favicons` is the last commit with full fav
 
 ## Overview
 
-This Chrome extension tracks your Most Recently Used (MRU) tabs and displays color-coded position indicators, creating a breadcrumb trail of your browsing session. The last 4 active tabs show numbered colored circles (1-4) in both their titles and favicons.
+This Chrome extension tracks your Most Recently Used (MRU) tabs and displays color-coded position indicators, creating a breadcrumb trail of your browsing session. Users can choose between single breadcrumb mode (showing only the active tab) or four breadcrumb mode (showing the last 4 active tabs with color-coded indicators).
 
 ## Architecture
 
@@ -101,7 +127,7 @@ This Chrome extension tracks your Most Recently Used (MRU) tabs and displays col
 │   ├── icon48.png          # 48x48 extension icon
 │   └── icon128.png         # 128x128 extension icon
 ├── manifest.json           # Chrome extension manifest (v3)
-├── popup.html              # Extension popup HTML
+├── popup.html              # Extension popup HTML (with breadcrumb count selector)
 ├── package.json            # NPM dependencies and scripts
 ├── tsconfig.json           # TypeScript compiler configuration
 ├── webpack.config.cjs      # Webpack bundler configuration (CommonJS)
@@ -117,8 +143,9 @@ This Chrome extension tracks your Most Recently Used (MRU) tabs and displays col
 - **Webpack 5**: Module bundler for compiling and packaging
 - **ESLint 9**: Code quality and linting with TypeScript support
 - **Chrome Extension Manifest V3**: Latest extension platform
+- **Chrome Storage API**: Persistent storage for user settings (chrome.storage.sync)
 - **Page Visibility API**: Browser API for detecting tab visibility changes
-- **MutationObserver API**: DOM API for monitoring title and favicon changes
+- **MutationObserver API**: DOM API for monitoring title changes
 
 ## Technical Design
 
@@ -144,10 +171,11 @@ The main logic implements three core functions:
 
 **Core Functions:**
 
-- `addIndicator()` - Prepends 🟢 to the document title when tab becomes active
-- `removeIndicator()` - Restores original title when tab becomes inactive
-- `handleVisibilityChange()` - Event handler for tab visibility changes
-- `init()` - Initializes the extension and sets up event listeners
+- `loadBreadcrumbCount()` - Loads breadcrumb count setting from chrome.storage.sync
+- `setPosition(position)` - Sets MRU position indicator, respects breadcrumb count setting
+- `removeIndicator()` - Removes indicator from title
+- `verifyPosition()` - Queries background script for correct position (self-healing)
+- `init()` - Initializes the extension, loads settings, sets up observers
 
 **Title Change Handling:**
 The extension uses a `MutationObserver` to watch for title changes made by the webpage itself (e.g., notification counters, dynamic updates). This ensures:
@@ -156,23 +184,66 @@ The extension uses a `MutationObserver` to watch for title changes made by the w
 - The original title is properly tracked and restored
 - No conflicts with page-initiated title changes
 
-#### 2. Visibility Detection
+**Settings Management:**
+The extension uses `chrome.storage.sync` for persistent settings:
 
-Uses the **Page Visibility API** (`document.visibilitychange` event):
+- Breadcrumb count setting (1 or 4) is stored and synced across devices
+- Content scripts listen for storage changes via `chrome.storage.onChanged`
+- Settings load on extension initialization and update in real-time
+- Default to 1 breadcrumb if no setting exists
 
-- Fires when user switches tabs
-- Provides `document.hidden` boolean to check tab state
-- Highly reliable and performant
-- Native browser support (no polling required)
+#### 2. Background Service Worker (`src/background.ts`)
+
+Manages the MRU stack and broadcasts position updates:
+
+**Core Functions:**
+
+- `loadBreadcrumbCount()` - Loads breadcrumb count setting from storage on startup
+- `updateMRU(tabId)` - Updates MRU stack when tab becomes active, trims to breadcrumb count
+- `broadcastPositions()` - Sends position updates to all tabs
+- `removeFromMRU(tabId)` - Removes tab from stack when closed
+- Message handler for `BREADCRUMB_COUNT_CHANGE` - Handles setting changes from popup
+
+**Event Listeners:**
+
+- `chrome.tabs.onActivated` - Tab becomes active
+- `chrome.tabs.onRemoved` - Tab is closed
+- `chrome.tabs.onUpdated` - Tab navigates or loads
+- `chrome.windows.onFocusChanged` - Window focus changes
+- `chrome.runtime.onMessage` - Messages from content scripts and popup
+
+#### 3. Popup Script (`src/popup.ts`)
+
+Provides UI for user settings:
+
+**Features:**
+
+- Radio buttons for selecting breadcrumb count (1 or 4)
+- Checkbox for debug logging toggle
+- Button to reload all tabs
+- Loads current settings on open
+- Saves settings to `chrome.storage.sync`
+- Notifies background script of changes via `chrome.runtime.sendMessage`
+
+#### 4. MRU Stack Management
+
+The background service worker maintains an array of tab IDs in MRU order:
+
+- Most recent tab at index 0 (position 1)
+- Second most recent at index 1 (position 2)
+- And so on...
+- Stack size limited by breadcrumb count setting (1 or 4)
+- Stack persisted to `chrome.storage.local` for service worker restarts
 
 #### 3. Title Management Strategy
 
 The extension implements careful title management:
 
 ```typescript
-// When adding indicator
+// When adding position indicator (e.g., position 1 = 🟦)
+const indicator = INDICATORS[position]; // Get appropriate colored square
 originalTitle = document.title;
-document.title = INDICATOR + document.title;
+document.title = indicator + document.title;
 
 // When removing indicator
 document.title = originalTitle;
@@ -181,8 +252,9 @@ document.title = originalTitle;
 **Edge Cases Handled:**
 
 - Page title changes while indicator is active → Update original title, reapply indicator
-- Multiple rapid visibility changes → State tracking prevents duplicate indicators
-- Title already has indicator → Check before adding to prevent duplication
+- Breadcrumb count changes → Content scripts listen for storage changes and update display
+- Position beyond breadcrumb count → Remove indicator
+- Single breadcrumb mode with position > 1 → Remove indicator (only show position 1)
 
 ## Build System
 
@@ -224,10 +296,10 @@ document.title = originalTitle;
 - `content_scripts`: Inject content.js into all pages
 - `matches: ["<all_urls>"]`: Run on all websites
 - `run_at: "document_start"`: Execute as early as possible
-
-**No Background Service Worker:** Not needed for this simple use case
-
-**No Permissions Required:** Title modification doesn't need explicit permissions
+- `background.service_worker`: Tracks MRU stack and coordinates updates
+- `permissions: ["storage"]`: For persistent settings (chrome.storage.sync/local)
+- `permissions: ["tabs"]`: For tab activation tracking
+- `host_permissions: ["<all_urls>"]`: For content script injection
 
 ### Web Platform APIs
 
@@ -243,6 +315,32 @@ if (document.hidden) {
 **Browser Support:** Universal (Chrome, Firefox, Safari, Edge)
 
 **Performance:** Event-driven (no polling), minimal overhead
+
+#### Chrome Storage API
+
+```typescript
+// Save breadcrumb count setting
+await chrome.storage.sync.set({ breadcrumbCount: 4 });
+
+// Load breadcrumb count setting
+const result = await chrome.storage.sync.get("breadcrumbCount");
+const count = result.breadcrumbCount ?? 1; // Default to 1
+
+// Listen for setting changes
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === "sync" && changes.breadcrumbCount) {
+    const newCount = changes.breadcrumbCount.newValue;
+    // Update behavior based on new setting
+  }
+});
+```
+
+**Storage Areas:**
+
+- `chrome.storage.sync`: Settings that sync across devices (breadcrumb count, debug logging)
+- `chrome.storage.local`: Local-only data (MRU stack persistence for service worker restarts)
+
+**Performance:** Fast, event-driven updates via `onChanged` listener
 
 #### MutationObserver API
 
@@ -264,10 +362,11 @@ titleObserver.observe(titleElement, {
 
 ### Resource Usage
 
-- **Memory:** Minimal (~50KB including all code)
-- **CPU:** Event-driven (only runs on visibility change)
+- **Memory:** Minimal (~12.5 KiB minified: 5.21 KiB background, 3.77 KiB popup, 3.53 KiB content)
+- **CPU:** Event-driven (only runs on tab activation, no polling)
 - **Network:** None (no external requests)
 - **DOM Impact:** Only modifies document.title (lightweight)
+- **Storage:** Minimal (a few bytes for settings)
 
 ### Optimization Strategies
 
@@ -368,11 +467,13 @@ titleObserver.observe(titleElement, {
 > **Operational note:** Bump the version for every source code change so you can confirm the new build is loaded in Chrome. After bumping, run `npm run build` so `dist/manifest.json` carries the new number.
 
 Version numbering follows semantic versioning (MAJOR.MINOR.PATCH):
+
 - **PATCH** (1.3.11 → 1.3.12): Bug fixes, minor improvements
 - **MINOR** (1.3.0 → 1.4.0): New features, significant enhancements
 - **MAJOR** (1.0.0 → 2.0.0): Breaking changes, major rewrites
 
 **Before every commit:**
+
 1. Update `version` field in `package.json`
 2. Run `npm run build` to regenerate `dist/manifest.json` with new version
 3. Commit with descriptive message including version number
@@ -381,6 +482,7 @@ Version numbering follows semantic versioning (MAJOR.MINOR.PATCH):
 > Chrome loads the unpacked extension from `dist/`, so the extension version Chrome displays always comes from `dist/manifest.json`. That file is copied from the root `manifest.json` during `npm run build`. If you forget to rebuild after bumping the version, Chrome will keep showing the old number from the previous build.
 
 **Example:**
+
 ```bash
 # Edit package.json version from 1.3.11 to 1.3.12
 npm run build
@@ -391,6 +493,7 @@ git commit -m "v1.3.12: Fix stale indicators on chrome:// pages"
 ### Git Pre-commit Hook
 
 A pre-commit hook is configured to enforce version bumps and run lint before every commit:
+
 - Requires a staged `package.json` version change.
 - Requires `manifest.json` version to match `package.json`.
 - Runs `npm run lint` and blocks on failures.
@@ -489,16 +592,26 @@ To bypass the hook in emergencies (not recommended): `git commit --no-verify`
 
 ## Design Decisions
 
-### Why Content Script vs Background Worker?
+### Why Both Content Script and Background Service Worker?
 
-**Chosen:** Content script
+**Content Script:**
+
+- Direct access to document.title for modification
+- Runs in page context for immediate title updates
+- Listens for storage changes to update display in real-time
+
+**Background Service Worker:**
+
+- Tracks global MRU state across all tabs
+- Persists MRU stack across service worker restarts
+- Coordinates position updates to all tabs
+- Handles tab activation/removal events
 
 **Reasoning:**
 
-- Direct access to document.title
-- No message passing overhead
-- Simpler architecture
-- Better performance for this use case
+- Content scripts can't communicate with each other directly
+- Background worker provides centralized MRU tracking
+- Message passing is efficient for position updates
 
 ### Why Title Modification vs Other Approaches?
 
@@ -507,23 +620,32 @@ To bypass the hook in emergencies (not recommended): `git commit --no-verify`
 1. **Modify tab bar CSS** - Not possible (browser UI is protected)
 2. **Browser action badge** - Doesn't highlight the tab itself
 3. **Overlay visual element** - More complex, could interfere with page content
+4. **Favicon modification** - Removed in v1.3.20 due to bookmark contamination
 
-**Chosen:** Title modification (with emoji)
+**Chosen:** Title modification (with colored square emoji)
 
 **Reasoning:**
 
-- Visible in the tab bar (user's requirement)
+- Visible in the tab bar
 - Non-intrusive to page content
 - Works on all sites
 - Simple implementation
-- No permission requirements
+- No bookmark contamination
 
-### Why 🟢 Green Circle?
+### Why Color-Coded Squares (🟦🟩🟧🟥)?
 
-- High visibility (bright color)
-- Universal recognition (green = active/go)
-- Single character (minimal space in tab)
-- Renders consistently across platforms
+- **High visibility** - Bright colors stand out in tab bar
+- **Position indication** - Blue=1, Green=2, Orange=3, Red=4 creates visual hierarchy
+- **Single character** - Minimal space in tab title
+- **Consistent rendering** - Renders uniformly across platforms
+- **Intuitive ordering** - Blue (cool) to red (warm) suggests temporal distance
+
+### Why Configurable Count (1 vs 4)?
+
+- **User preference** - Some users want simplicity (1), others want full trail (4)
+- **Performance** - Single breadcrumb mode has even lower overhead
+- **Flexibility** - Default to simple mode, opt-in to advanced features
+- **Clean UX** - Not everyone needs to see 4 indicators at all times
 
 ### Why Manifest V3?
 
@@ -536,12 +658,14 @@ To bypass the hook in emergencies (not recommended): `git commit --no-verify`
 
 ### Future Features
 
-1. **Configurable indicator** - Let users choose emoji/symbol
-2. **Options page** - UI for customization
-3. **Keyboard shortcut** - Toggle indicator on/off
-4. **Color themes** - Different colors for different contexts
-5. **Multiple indicators** - Different symbols for different sites
-6. **Tab grouping** - Integrate with Chrome's tab groups
+1. ~~**Configurable indicator count**~~ - ✅ Implemented in v1.3.33
+2. **Configurable colors/emoji** - Let users choose indicator symbols
+3. **More breadcrumb options** - Support 2, 3, or custom count
+4. **Options page** - Dedicated settings page (currently uses popup)
+5. **Keyboard shortcuts** - Quick toggle or jump to MRU positions
+6. **Color themes** - Different colors for different contexts
+7. **Tab grouping** - Integrate with Chrome's tab groups
+8. **Export/import settings** - Share configuration across installations
 
 ### Code Improvements
 
