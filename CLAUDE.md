@@ -4,7 +4,7 @@
 
 ### Production Release ✅
 
-**Version**: 1.3.33 (Production)
+**Version**: 1.3.34 (Production)
 **Status**: MRU breadcrumb trail with configurable count - stable
 **Release Date**: 2025-01-20
 **GitHub**: https://github.com/bglenden/TabHighlightExtension
@@ -62,6 +62,19 @@ The tagged version `v1.3.19-last-with-favicons` is the last commit with full fav
 - MutationObserver for favicon changes
 
 ### Recent Features & Changes
+
+**v1.3.34 - Visual Breadcrumb Indicators in Popup (2025-01-20)**
+
+- **Feature**: Added visual color indicators in popup to show what each breadcrumb mode looks like
+- **UI Enhancement**: Radio button labels now display the actual colored squares used:
+  - Single breadcrumb mode shows: 🟦
+  - Four breadcrumb mode shows: 🟦🟩🟧🟥
+- **User Experience**: Users can see exactly what indicators will appear before selecting a mode
+- **Implementation**:
+  - Updated `popup.html` with flexbox layout for indicator display
+  - Added emoji spans next to each radio button option
+  - Improved visual alignment and spacing
+- **Benefits**: Reduces confusion about what each mode does, provides immediate visual feedback
 
 **v1.3.33 - Configurable Breadcrumb Count (2025-01-20)**
 
@@ -127,7 +140,7 @@ This Chrome extension tracks your Most Recently Used (MRU) tabs and displays col
 │   ├── icon48.png          # 48x48 extension icon
 │   └── icon128.png         # 128x128 extension icon
 ├── manifest.json           # Chrome extension manifest (v3)
-├── popup.html              # Extension popup HTML (with breadcrumb count selector)
+├── popup.html              # Extension popup HTML (with visual breadcrumb indicators)
 ├── package.json            # NPM dependencies and scripts
 ├── tsconfig.json           # TypeScript compiler configuration
 ├── webpack.config.cjs      # Webpack bundler configuration (CommonJS)
@@ -219,6 +232,7 @@ Provides UI for user settings:
 **Features:**
 
 - Radio buttons for selecting breadcrumb count (1 or 4)
+- Visual color indicators showing what each mode displays (🟦 or 🟦🟩🟧🟥)
 - Checkbox for debug logging toggle
 - Button to reload all tabs
 - Loads current settings on open

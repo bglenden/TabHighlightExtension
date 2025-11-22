@@ -96,8 +96,9 @@
             </div>
             <label
                 style="
-                    display: block;
-                    margin-bottom: 6px;
+                    display: flex;
+                    align-items: center;
+                    margin-bottom: 8px;
                     font-size: 13px;
                     color: #666;
                     cursor: pointer;
@@ -108,13 +109,15 @@
                     name="breadcrumbCount"
                     value="1"
                     id="breadcrumb1"
-                    style="margin-right: 6px; cursor: pointer"
+                    style="margin-right: 6px; cursor: pointer; flex-shrink: 0"
                 />
-                Single breadcrumb (active tab only)
+                <span style="flex: 1">Single breadcrumb (active tab only)</span>
+                <span style="font-size: 16px; margin-left: 8px">🟦</span>
             </label>
             <label
                 style="
-                    display: block;
+                    display: flex;
+                    align-items: center;
                     font-size: 13px;
                     color: #666;
                     cursor: pointer;
@@ -125,9 +128,10 @@
                     name="breadcrumbCount"
                     value="4"
                     id="breadcrumb4"
-                    style="margin-right: 6px; cursor: pointer"
+                    style="margin-right: 6px; cursor: pointer; flex-shrink: 0"
                 />
-                4 breadcrumbs (last 4 active tabs)
+                <span style="flex: 1">4 breadcrumbs (last 4 active tabs)</span>
+                <span style="font-size: 16px; margin-left: 8px">🟦🟩🟧🟥</span>
             </label>
         </div>
 

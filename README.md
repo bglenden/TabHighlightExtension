@@ -2,7 +2,7 @@
 
 A lightweight Chrome extension that shows your Most Recently Used (MRU) tabs with colored position indicators, making it easy to navigate your browsing history.
 
-**Version**: 1.3.33 | **GitHub**: https://github.com/bglenden/TabHighlightExtension
+**Version**: 1.3.34 | **GitHub**: https://github.com/bglenden/TabHighlightExtension
 
 ## Why This Extension?
 
@@ -62,9 +62,11 @@ Once installed, the extension works automatically. By default, it shows a single
 
 1. **Click the extension icon** in your toolbar
 2. **Select your preferred mode**:
-   - **Single breadcrumb** (default): Only the active tab shows 🟦
-   - **4 breadcrumbs**: Your last 4 tabs show color-coded indicators
+   - **Single breadcrumb** (default): Only the active tab shows 🟦 - Visual preview: 🟦
+   - **4 breadcrumbs**: Your last 4 tabs show color-coded indicators - Visual preview: 🟦🟩🟧🟥
 3. **Your choice is saved** automatically and persists across browser restarts
+
+The popup shows you exactly which colored indicators will appear in each mode, making it easy to understand what you'll see.
 
 ### Single Breadcrumb Mode (Default)
 
