@@ -13,40 +13,6 @@ const STORAGE_KEY_BREADCRUMB_COUNT = "breadcrumbCount";
 const DEFAULT_BREADCRUMB_COUNT = 1;
 
 /**
- * Builds a detailed report of tab discovery for debugging
- */
-function buildTabDiscoveryReport(
-  allTabs: chrome.tabs.Tab[],
-  discardedTabs: chrome.tabs.Tab[],
-  windows: chrome.windows.Window[],
-): string {
-  let report = `=== TAB DISCOVERY REPORT ===\n`;
-  report += `Total windows: ${windows.length}\n`;
-  report += `Window details: ${windows.map((w) => `${w.id}(${w.type})`).join(", ")}\n`;
-  report += `Total tabs found: ${allTabs.length}\n`;
-  report += `Discarded tabs: ${discardedTabs.length}\n\n`;
-
-  if (discardedTabs.length > 0) {
-    report += `=== DISCARDED TABS ===\n`;
-    discardedTabs.forEach((t, i) => {
-      report += `${i + 1}. [${t.id}] ${t.title?.substring(0, 40) || "No title"}\n`;
-      report += `   URL: ${t.url?.substring(0, 50) || "No URL"}\n`;
-      report += `   Window: ${t.windowId}\n\n`;
-    });
-  }
-
-  report += `=== ALL TABS ===\n\n`;
-  allTabs.forEach((t, i) => {
-    report += `${i + 1}. [${t.id}] ${t.title?.substring(0, 40) || "No title"}\n`;
-    report += `   URL: ${t.url?.substring(0, 50) || "No URL"}\n`;
-    report += `   Active: ${t.active}, Discarded: ${t.discarded}, Status: ${t.status}\n`;
-    report += `   Window: ${t.windowId}\n\n`;
-  });
-
-  return report;
-}
-
-/**
  * Reloads all eligible tabs (excluding chrome:// and extension pages)
  * Returns count of reloaded and skipped tabs
  */
@@ -190,48 +156,16 @@ initBreadcrumbCount();
 
 document.getElementById("reloadBtn")?.addEventListener("click", async () => {
   const button = document.getElementById("reloadBtn") as HTMLButtonElement;
-  const debug = document.getElementById("debug") as HTMLTextAreaElement;
-  const copyBtn = document.getElementById("copyBtn") as HTMLButtonElement;
 
   button.disabled = true;
   button.textContent = "Reloading...";
 
   try {
-    // Query all possible tab states
+    // Query all tabs
     const allTabs = await chrome.tabs.query({});
-    const discardedTabs = await chrome.tabs.query({ discarded: true });
-    const windows = await chrome.windows.getAll({ populate: false });
-
-    // Build and display debug report
-    const debugInfo = buildTabDiscoveryReport(allTabs, discardedTabs, windows);
-    debug.value = debugInfo;
-    debug.style.display = "block";
-
-    // Setup copy button
-    copyBtn.style.display = "block";
-    copyBtn.onclick = () => {
-      debug.select();
-      document.execCommand("copy");
-      copyBtn.textContent = "✓ Copied!";
-      setTimeout(() => {
-        copyBtn.textContent = "Copy Debug Info";
-      }, 2000);
-    };
 
     // Log tab details for debugging
     log(`[Tab Highlighter Popup] Found ${allTabs.length} tabs total`);
-    log(
-      `[Tab Highlighter Popup] Tab details:`,
-      allTabs.map((t) => ({
-        id: t.id,
-        url: t.url?.substring(0, 60),
-        title: t.title?.substring(0, 40),
-        active: t.active,
-        discarded: t.discarded,
-        status: t.status,
-        windowId: t.windowId,
-      })),
-    );
 
     // Reload eligible tabs
     const { reloaded, skipped } = await reloadEligibleTabs(allTabs);

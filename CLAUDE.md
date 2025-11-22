@@ -1,10 +1,10 @@
 # Active Tab Highlighter - Technical Documentation
 
-## Current Status (v1.3.33)
+## Current Status (v1.4.0)
 
 ### Production Release ✅
 
-**Version**: 1.3.34 (Production)
+**Version**: 1.4.0 (Production)
 **Status**: MRU breadcrumb trail with configurable count - stable
 **Release Date**: 2025-01-20
 **GitHub**: https://github.com/bglenden/TabHighlightExtension
@@ -62,6 +62,20 @@ The tagged version `v1.3.19-last-with-favicons` is the last commit with full fav
 - MutationObserver for favicon changes
 
 ### Recent Features & Changes
+
+**v1.4.0 - Cleaner Popup UI (2025-01-20)**
+
+- **Feature**: Removed debug report display from popup for cleaner interface
+- **UI Simplification**: Removed debug textarea and copy button that appeared after "Reload All Tabs"
+- **Rationale**: Debug information was cluttering the popup and not useful for most users
+- **Developer Impact**: Debug logging still available via browser console (F12) when enabled
+- **Implementation**:
+  - Removed `<textarea id="debug">` and `<button id="copyBtn">` from `popup.html`
+  - Removed `buildTabDiscoveryReport()` function from `popup.ts`
+  - Removed debug report building and display logic from reload button handler
+  - Simplified tab reload flow to only show success/error status message
+- **Benefits**: Cleaner, more professional popup UI; faster reload operation; less visual clutter
+- **Version**: Bumped to 1.4.0 (minor version) for significant UI change
 
 **v1.3.34 - Visual Breadcrumb Indicators in Popup (2025-01-20)**
 
@@ -235,9 +249,16 @@ Provides UI for user settings:
 - Visual color indicators showing what each mode displays (🟦 or 🟦🟩🟧🟥)
 - Checkbox for debug logging toggle
 - Button to reload all tabs
+- Status message showing reload results (success/error)
 - Loads current settings on open
 - Saves settings to `chrome.storage.sync`
 - Notifies background script of changes via `chrome.runtime.sendMessage`
+
+**Removed in v1.4.0:**
+
+- Debug textarea displaying tab discovery report
+- Copy button for debug information
+- Tab discovery report generation
 
 #### 4. MRU Stack Management
 
@@ -376,7 +397,7 @@ titleObserver.observe(titleElement, {
 
 ### Resource Usage
 
-- **Memory:** Minimal (~12.5 KiB minified: 5.21 KiB background, 3.77 KiB popup, 3.53 KiB content)
+- **Memory:** Minimal (~12.5 KiB minified total: 5.21 KiB background, 3.77 KiB popup, 3.53 KiB content)
 - **CPU:** Event-driven (only runs on tab activation, no polling)
 - **Network:** None (no external requests)
 - **DOM Impact:** Only modifies document.title (lightweight)
@@ -690,13 +711,14 @@ To bypass the hook in emergencies (not recommended): `git commit --no-verify`
 ### Future Features
 
 1. ~~**Configurable indicator count**~~ - ✅ Implemented in v1.3.33
-2. **Configurable colors/emoji** - Let users choose indicator symbols
-3. **More breadcrumb options** - Support 2, 3, or custom count
-4. **Options page** - Dedicated settings page (currently uses popup)
-5. **Keyboard shortcuts** - Quick toggle or jump to MRU positions
-6. **Color themes** - Different colors for different contexts
-7. **Tab grouping** - Integrate with Chrome's tab groups
-8. **Export/import settings** - Share configuration across installations
+2. ~~**Clean popup UI**~~ - ✅ Implemented in v1.4.0 (removed debug report clutter)
+3. **Configurable colors/emoji** - Let users choose indicator symbols
+4. **More breadcrumb options** - Support 2, 3, or custom count
+5. **Options page** - Dedicated settings page (currently uses popup)
+6. **Keyboard shortcuts** - Quick toggle or jump to MRU positions
+7. **Color themes** - Different colors for different contexts
+8. **Tab grouping** - Integrate with Chrome's tab groups
+9. **Export/import settings** - Share configuration across installations
 
 ### Code Improvements
 

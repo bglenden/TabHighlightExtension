@@ -2,7 +2,7 @@
 
 A lightweight Chrome extension that shows your Most Recently Used (MRU) tabs with colored position indicators, making it easy to navigate your browsing history.
 
-**Version**: 1.3.34 | **GitHub**: https://github.com/bglenden/TabHighlightExtension
+**Version**: 1.4.0 | **GitHub**: https://github.com/bglenden/TabHighlightExtension
 
 ## Why This Extension?
 
@@ -17,10 +17,12 @@ When you have many tabs open, it's helpful to see which tabs you've used most re
     - 🟩 Position 2 (Green): Last tab you viewed
     - 🟧 Position 3 (Orange): 2 tabs back
     - 🟥 Position 4 (Red): 3 tabs back
+- **Visual Mode Selector**: Popup shows exactly which colored indicators appear in each mode
 - **Title Indicators**: Adds colored square emoji at the beginning of tab titles for instant visibility
 - **Persistent Settings**: Your breadcrumb mode preference is saved across browser restarts
 - **Automatic Updates**: Indicators update instantly as you switch tabs
-- **Lightweight**: Minimal resource usage (~2.7 KiB), no performance impact
+- **Clean Interface**: Simple, uncluttered popup with essential controls
+- **Lightweight**: Minimal resource usage (~12.5 KiB), no performance impact
 - **Privacy-Focused**: No data collection, tracking, or external requests
 - **Works Everywhere**: Runs on all http/https websites automatically
 - **Bookmark-Safe**: No favicon modification prevents bookmark icon contamination
@@ -117,7 +119,7 @@ Debug logs show:
 - Title changes
 - Tab activation events
 
-The setting persists across browser sessions and works without reloading tabs.
+The setting persists across browser sessions. Debug information appears in the browser console (F12), not in the popup window.
 
 ## Privacy
 
