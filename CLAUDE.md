@@ -1,11 +1,11 @@
 # Active Tab Highlighter - Technical Documentation
 
-## Current Status (v1.5.2)
+## Current Status (v1.5.0)
 
 ### Production Release ✅
 
-**Version**: 1.5.2 (Production)
-**Status**: MRU breadcrumb trail with configurable count - stable, refactored codebase
+**Version**: 1.5.0 (Production)
+**Status**: MRU breadcrumb trail with configurable count - stable, refactored codebase, semantic versioning adopted
 **Release Date**: 2025-11-23
 **GitHub**: https://github.com/bglenden/TabHighlightExtension
 
@@ -66,41 +66,10 @@ The tagged version `v1.3.19-last-with-favicons` is the last commit with full fav
 
 ### Recent Features & Changes
 
-**v1.5.2 - Tag Enforcement on Version Changes (2025-01-23)**
-
-- **Feature**: Pre-commit hook now requires Git tags when version numbers change
-- **Quality Gate**: Prevents forgetting to tag releases
-- **Developer Experience**: Automatic reminder to create release tag with descriptive message
-- **Implementation**:
-  - Hook detects version changes in `package.json`
-  - Blocks commit if corresponding tag doesn't exist
-  - Provides clear instructions for creating the required tag
-  - Allows commits without version changes to proceed normally
-- **Benefits**:
-  - Never forget to tag a release
-  - Enforces semantic versioning discipline
-  - Git history and tags stay in sync
-  - Clear release points for users and collaborators
-- **Workflow**: Version bump → Create tag → Commit succeeds
-
-**v1.5.1 - Enhanced Pre-commit Hook (2025-01-23)**
-
-- **Feature**: Pre-commit hook now runs tests automatically before allowing commits
-- **Quality Gate**: Added `npm test` to pre-commit hook alongside existing lint check
-- **Developer Experience**: Ensures all commits have passing tests, catching issues earlier
-- **Implementation**:
-  - Updated `.git/hooks/pre-commit` to run test suite after lint check
-  - Updated documentation with new hook setup instructions
-  - Added `coverage/` to `.gitignore` to exclude test coverage reports
-- **Benefits**:
-  - Prevents committing broken code
-  - Enforces test-driven development workflow
-  - Catches regressions before they enter version control
-- **Note**: Hook setup still required for each clone (Git hooks are not committed)
-
-**v1.5.0 - Code Refactoring & Test Infrastructure (2025-11-23)**
+**v1.5.0 - Code Refactoring & Test Infrastructure + Semantic Versioning Adoption (2025-11-23)**
 
 - **Feature**: Major internal refactoring for improved maintainability and code quality
+- **Versioning Change**: Adopted semantic versioning (MAJOR.MINOR.PATCH) going forward
 - **Zero Code Duplication**:
   - Created `src/constants.ts` with all storage keys and defaults in one place
   - Eliminated duplicate constant definitions across 3 files (background, content, popup)
@@ -118,21 +87,29 @@ The tagged version `v1.3.19-last-with-favicons` is the last commit with full fav
   - Tests cover constants, types, and storage utilities
   - All tests passing with full coverage of utility functions
   - Test files: `__tests__/types.test.ts`, `__tests__/constants.test.ts`, `__tests__/storage.test.ts`
+- **Pre-commit Hook**:
+  - Simplified to run lint and tests only
+  - No longer requires version bumps on every commit
+  - Supports semantic versioning workflow
 - **Organizational Improvements**:
   - Moved `popup.html` to `src/` directory for consistency
   - All source files now in `src/` folder
+  - Added `coverage/` to `.gitignore`
+- **Release Tagging**:
+  - Tagged historical releases: v1.1.0, v1.3.0, v1.3.33, v1.4.0, v1.5.0
+  - GitHub releases page now shows major milestones
 - **Benefits**:
   - Easier to maintain and extend
   - Reduced chance of bugs from inconsistent constants
   - Type safety prevents invalid values
   - Tests catch regressions early
   - Clean, professional codebase architecture
+  - Standard versioning for future users
 - **Bundle Size Impact**: Minimal (+630 bytes total due to utility abstractions)
   - background.js: 5.21 KiB → 5.46 KiB (+250 bytes)
   - content.js: 3.53 KiB → 3.59 KiB (+60 bytes)
   - popup.js: 2.52 KiB → 2.84 KiB (+320 bytes)
 - **User Impact**: None - all changes are internal improvements
-- **Version**: Bumped to 1.5.0 (minor version) for significant architectural improvements
 
 **v1.4.0 - Cleaner Popup UI (2025-01-20)**
 
@@ -579,134 +556,142 @@ titleObserver.observe(titleElement, {
 4. **Test changes** by switching between tabs
 5. **Check console** for errors (open DevTools on any page, content script runs in page context)
 
-### ⚠️ IMPORTANT: Pre-Commit Checklist
+### ⚠️ IMPORTANT: Development Workflow
 
-**ALWAYS complete these steps before every commit:**
+**Semantic Versioning Strategy (Adopted v1.5.0+)**
 
-1. **Update version number** in `package.json` (for code changes only)
-2. **Update README.md** with user-facing information:
-   - New features and how to use them
-   - Changed behavior that users need to know about
-   - Updated version number in header
-   - Keep it simple and non-technical
-3. **Update CLAUDE.md** with technical/implementation details:
-   - Implementation notes and design decisions
-   - Architecture changes
-   - Developer workflow changes
-   - Updated version number in status section
-   - Add entry to "Recent Features & Changes"
-4. **Bump version** in `package.json` (for releases only)
-5. **Create Git tag** for the new version (required by pre-commit hook)
-6. **Run `npm run build`** to regenerate `dist/manifest.json`
+This project follows [Semantic Versioning](https://semver.org/):
 
-**The pre-commit hook will automatically enforce:**
+- **MAJOR** (1.x.x → 2.x.x): Breaking changes, incompatible API changes
+- **MINOR** (1.5.x → 1.6.x): New features, backwards-compatible functionality
+- **PATCH** (1.5.0 → 1.5.1): Bug fixes, backwards-compatible fixes
 
-- Lint check (`npm run lint`)
-- Test suite (`npm test`)
-- Git tag exists if version was changed (prevents forgetting to tag releases)
+**When to Bump Version:**
 
-> **Operational note:** Bump the version for every source code change so you can confirm the new build is loaded in Chrome. After bumping, run `npm run build` so `dist/manifest.json` carries the new number.
+- **Don't bump for every commit** - only when ready to release
+- **Bump MINOR** for new features (e.g., 1.5.0 → 1.6.0)
+- **Bump PATCH** for bug fixes (e.g., 1.5.0 → 1.5.1)
+- **Bump MAJOR** for breaking changes (e.g., 1.5.0 → 2.0.0)
 
-> **Documentation note:** Both README.md and CLAUDE.md should be updated in the same commit as the feature/fix. README.md is for users, CLAUDE.md is for developers and AI assistants.
-
-Version numbering follows semantic versioning (MAJOR.MINOR.PATCH):
-
-- **PATCH** (1.3.11 → 1.3.12): Bug fixes, minor improvements
-- **MINOR** (1.3.0 → 1.4.0): New features, significant enhancements
-- **MAJOR** (1.0.0 → 2.0.0): Breaking changes, major rewrites
-
-**Before every release commit:**
-
-1. Update `version` field in `package.json` and `manifest.json`
-2. Create Git tag: `git tag -a v1.x.x -m "Release v1.x.x: Description"`
-3. Run `npm run build` to regenerate `dist/manifest.json`
-4. Commit with descriptive message
-5. Push with tags: `git push && git push --tags`
-
-**For development commits (no version change):**
-
-1. Make changes
-2. Commit normally (hook allows commits without version changes)
-
-> **Why the extra build?**  
-> Chrome loads the unpacked extension from `dist/`, so the extension version Chrome displays always comes from `dist/manifest.json`. That file is copied from the root `manifest.json` during `npm run build`. If you forget to rebuild after bumping the version, Chrome will keep showing the old number from the previous build.
-
-**Example:**
+**Development Workflow:**
 
 ```bash
-# Edit package.json version from 1.3.11 to 1.3.12
+# 1. Work on feature (multiple commits, same version)
+git commit -m "refactor: Extract utility function"
+git commit -m "feat: Add keyboard shortcut support"
+git commit -m "test: Add tests for keyboard shortcuts"
+
+# 2. Ready to release? Bump version
+# Edit package.json: "version": "1.6.0"
+# Edit manifest.json: "version": "1.6.0"
+
+# 3. Create release tag
+git tag -a v1.6.0 -m "Release v1.6.0: Add keyboard shortcuts
+
+- Cmd+Shift+1/2/3/4 to jump to MRU positions
+- Configurable in settings
+- Works across all tabs"
+
+# 4. Build and commit
 npm run build
-git add .
-git commit -m "v1.3.12: Fix stale indicators on chrome:// pages"
+git add -A
+git commit -m "chore: Release v1.6.0"
+
+# 5. Push with tags
+git push && git push --tags
+
+# 6. Create GitHub release (optional)
+gh release create v1.6.0 --generate-notes
 ```
+
+**Pre-Commit Hook (Automatic):**
+
+The hook runs on every commit:
+
+- ✅ Lint check (`npm run lint`)
+- ✅ Test suite (`npm test`)
+
+**Documentation Updates:**
+
+When releasing a new version:
+
+1. **Update README.md** with user-facing changes
+2. **Update CLAUDE.md** status section and "Recent Features & Changes"
+3. **Run `npm run build`** to regenerate `dist/manifest.json`
+4. **Create descriptive Git tag** with release notes
+
+**Why This Workflow:**
+
+- ✅ Standard practice (semantic versioning)
+- ✅ Flexible - commit freely, release deliberately
+- ✅ Clean history - tags mark releases
+- ✅ User-friendly - version numbers have meaning
+- ✅ GitHub integration - releases page shows milestones
 
 ### Git Pre-commit Hook
 
-A pre-commit hook is configured to enforce quality gates and release tagging:
+A pre-commit hook is configured to enforce code quality:
 
-- Runs `npm run lint` and blocks on failures.
-- Runs `npm test` and blocks on failures.
-- If `package.json` version changed, requires a Git tag for that version to exist.
+- Runs `npm run lint` and blocks on failures
+- Runs `npm test` and blocks on failures
 
 **Setup (required for each clone):**
 
 ```bash
-bash -c 'cat > .git/hooks/pre-commit << \"EOF\"
+cat > .git/hooks/pre-commit << 'EOF'
 #!/bin/sh
 
-# Enforce quality and tagging rules before committing.
+# Enforce quality before committing.
 # 1) Lint must pass
 # 2) Tests must pass
-# 3) If version changed, a tag for that version must exist or be created
 
 set -e
 
-echo \"Running lint check...\"
+echo "Running lint check..."
 npm run lint
 
-echo \"Running tests...\"
+echo "Running tests..."
 npm test
 
-# Check if package.json version changed
-if git diff --cached -- package.json | grep -q '\"version\"'; then
-  # Get new version from package.json
-  new_version=$(node -e \"console.log(require('./package.json').version)\" 2>/dev/null)
-
-  if [ -z \"$new_version\" ]; then
-    echo \"ERROR: Unable to read version from package.json\"
-    exit 1
-  fi
-
-  # Check if tag exists for this version
-  if ! git rev-parse \"v$new_version\" >/dev/null 2>&1; then
-    echo \"\"
-    echo \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\"
-    echo \"⚠️  VERSION CHANGED: v$new_version\"
-    echo \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\"
-    echo \"\"
-    echo \"A version change requires a Git tag.\"
-    echo \"\"
-    echo \"Please create a tag for this release:\"
-    echo \"\"
-    echo \"  git tag -a v$new_version -m \\\"Release v$new_version: <description>\\\"\"
-    echo \"\"
-    echo \"Or abort this commit and bump version later.\"
-    echo \"\"
-    echo \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\"
-    exit 1
-  fi
-
-  echo \"✓ Version tag v$new_version exists\"
-fi
-
-echo \"✓ All pre-commit checks passed\"
+echo "✓ All pre-commit checks passed"
 EOF
-chmod +x .git/hooks/pre-commit'
+chmod +x .git/hooks/pre-commit
 ```
 
 **Note:** Git hooks are local and not committed to the repository. You'll need to set this up on each machine/clone.
 
 To bypass the hook in emergencies (not recommended): `git commit --no-verify`
+
+### Release Tagging Strategy
+
+**Which versions to tag:**
+
+- ✅ All MINOR releases (v1.6.0, v1.7.0, etc.)
+- ✅ All PATCH releases (v1.5.1, v1.5.2, etc.)
+- ✅ Critical bug fixes
+- ❌ Don't tag: work-in-progress commits, refactoring, docs-only
+
+**Tagged releases:**
+
+- v1.1.0 - Initial release
+- v1.3.0 - MRU breadcrumb trail feature
+- v1.3.33 - Configurable breadcrumb count
+- v1.4.0 - Cleaner popup UI
+- v1.5.0 - Major refactoring and test infrastructure
+
+**Creating GitHub releases:**
+
+```bash
+# After pushing tags
+gh release create v1.6.0 --generate-notes
+
+# Or manually via GitHub web UI
+# 1. Go to https://github.com/bglenden/TabHighlightExtension/releases
+# 2. Click "Draft a new release"
+# 3. Select tag
+# 4. Generate release notes
+# 5. Publish
+```
 
 ### Testing Strategy
 
