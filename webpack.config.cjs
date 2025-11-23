@@ -40,7 +40,7 @@ module.exports = {
           },
         },
         { from: "icons", to: "icons" },
-        { from: "popup.html", to: "popup.html" },
+        { from: "src/popup.html", to: "popup.html" },
       ],
     }),
   ],

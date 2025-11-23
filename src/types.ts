@@ -43,9 +43,27 @@ export interface UpdatePositionResponse {
 }
 
 /**
+ * Message to change breadcrumb count setting
+ */
+export interface BreadcrumbCountChangeMessage {
+  type: "BREADCRUMB_COUNT_CHANGE";
+  count: 1 | 4;
+}
+
+/**
+ * Response to breadcrumb count change
+ */
+export interface BreadcrumbCountChangeResponse {
+  success: boolean;
+}
+
+/**
  * Union type for all extension messages
  */
-export type ExtensionMessage = UpdatePositionMessage | GetMyPositionMessage;
+export type ExtensionMessage =
+  | UpdatePositionMessage
+  | GetMyPositionMessage
+  | BreadcrumbCountChangeMessage;
 
 /**
  * MRU indicator emojis mapped by position
@@ -61,8 +79,3 @@ export const INDICATORS: Record<Exclude<MRUPosition, 0>, string> = {
  * Maximum number of tabs tracked in MRU stack
  */
 export const MAX_MRU_STACK_SIZE = 4;
-
-/**
- * Storage key for debug logging preference
- */
-export const DEBUG_STORAGE_KEY = "debugLoggingEnabled";

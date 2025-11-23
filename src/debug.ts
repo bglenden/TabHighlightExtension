@@ -5,7 +5,7 @@
  * The debug flag is stored in chrome.storage.local and synchronized across all scripts.
  */
 
-import { DEBUG_STORAGE_KEY } from "./types";
+import { STORAGE_KEY_DEBUG } from "./constants";
 
 // Cached debug flag (updated via storage listener)
 let DEBUG = false;
@@ -18,13 +18,13 @@ let DEBUG = false;
 export async function initDebug(): Promise<void> {
   try {
     // Read initial value from storage (defaults to false)
-    const result = await chrome.storage.local.get(DEBUG_STORAGE_KEY);
-    DEBUG = result[DEBUG_STORAGE_KEY] ?? false;
+    const result = await chrome.storage.local.get(STORAGE_KEY_DEBUG);
+    DEBUG = result[STORAGE_KEY_DEBUG] ?? false;
 
     // Listen for changes to debug flag
     chrome.storage.onChanged.addListener((changes, areaName) => {
-      if (areaName === "local" && changes[DEBUG_STORAGE_KEY]) {
-        DEBUG = changes[DEBUG_STORAGE_KEY].newValue ?? false;
+      if (areaName === "local" && changes[STORAGE_KEY_DEBUG]) {
+        DEBUG = changes[STORAGE_KEY_DEBUG].newValue ?? false;
         console.log(
           `[Tab Highlighter] Debug logging ${DEBUG ? "enabled" : "disabled"}`,
         );
@@ -65,6 +65,6 @@ export function isDebugEnabled(): boolean {
  * Set debug flag (saves to storage)
  */
 export async function setDebugEnabled(enabled: boolean): Promise<void> {
-  await chrome.storage.local.set({ [DEBUG_STORAGE_KEY]: enabled });
+  await chrome.storage.local.set({ [STORAGE_KEY_DEBUG]: enabled });
   DEBUG = enabled;
 }

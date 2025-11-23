@@ -1,12 +1,12 @@
 # Active Tab Highlighter - Technical Documentation
 
-## Current Status (v1.4.0)
+## Current Status (v1.5.0)
 
 ### Production Release ✅
 
-**Version**: 1.4.0 (Production)
-**Status**: MRU breadcrumb trail with configurable count - stable
-**Release Date**: 2025-01-20
+**Version**: 1.5.0 (Production)
+**Status**: MRU breadcrumb trail with configurable count - stable, refactored codebase
+**Release Date**: 2025-11-23
 **GitHub**: https://github.com/bglenden/TabHighlightExtension
 
 ### What's Working
@@ -26,6 +26,9 @@
 ✅ **URL filtering**: Only tracks http:// and https:// URLs to avoid errors on protected pages
 ✅ **Bookmark-safe**: No favicon modification prevents bookmark contamination
 ✅ **Real-time updates**: Changing breadcrumb count instantly updates all tabs
+✅ **Refactored codebase**: Clean architecture with zero code duplication (v1.5.0)
+✅ **Type-safe storage**: Centralized storage utilities with full type safety (v1.5.0)
+✅ **Unit tests**: 42 tests covering constants, types, and storage utilities (v1.5.0)
 
 ### Known Limitations
 
@@ -62,6 +65,42 @@ The tagged version `v1.3.19-last-with-favicons` is the last commit with full fav
 - MutationObserver for favicon changes
 
 ### Recent Features & Changes
+
+**v1.5.0 - Code Refactoring & Test Infrastructure (2025-11-23)**
+
+- **Feature**: Major internal refactoring for improved maintainability and code quality
+- **Zero Code Duplication**:
+  - Created `src/constants.ts` with all storage keys and defaults in one place
+  - Eliminated duplicate constant definitions across 3 files (background, content, popup)
+- **Type-Safe Storage Utilities**:
+  - Created `src/storage.ts` with typed helper functions
+  - `getBreadcrumbCount()`, `setBreadcrumbCount()`, `getDebugEnabled()`, `setDebugEnabled()`, `getMruStack()`, `setMruStack()`
+  - All storage operations now centralized with consistent error handling
+  - Full TypeScript type safety (e.g., breadcrumbCount is `1 | 4`, not just `number`)
+- **Complete Type Definitions**:
+  - Added `BreadcrumbCountChangeMessage` type to `types.ts`
+  - All message types now properly defined with 100% type coverage
+- **Unit Test Infrastructure**:
+  - Added Jest with TypeScript support
+  - Created 42 unit tests across 3 test suites
+  - Tests cover constants, types, and storage utilities
+  - All tests passing with full coverage of utility functions
+  - Test files: `__tests__/types.test.ts`, `__tests__/constants.test.ts`, `__tests__/storage.test.ts`
+- **Organizational Improvements**:
+  - Moved `popup.html` to `src/` directory for consistency
+  - All source files now in `src/` folder
+- **Benefits**:
+  - Easier to maintain and extend
+  - Reduced chance of bugs from inconsistent constants
+  - Type safety prevents invalid values
+  - Tests catch regressions early
+  - Clean, professional codebase architecture
+- **Bundle Size Impact**: Minimal (+630 bytes total due to utility abstractions)
+  - background.js: 5.21 KiB → 5.46 KiB (+250 bytes)
+  - content.js: 3.53 KiB → 3.59 KiB (+60 bytes)
+  - popup.js: 2.52 KiB → 2.84 KiB (+320 bytes)
+- **User Impact**: None - all changes are internal improvements
+- **Version**: Bumped to 1.5.0 (minor version) for significant architectural improvements
 
 **v1.4.0 - Cleaner Popup UI (2025-01-20)**
 
@@ -141,11 +180,20 @@ This Chrome extension tracks your Most Recently Used (MRU) tabs and displays col
 ├── src/
 │   ├── content.ts          # Content script - manages tab indicators
 │   ├── background.ts       # Service worker - tracks MRU stack
-│   └── popup.ts            # Extension popup - reload functionality
+│   ├── popup.ts            # Extension popup - reload functionality
+│   ├── popup.html          # Extension popup HTML (v1.5.0 - moved to src/)
+│   ├── constants.ts        # Shared constants (storage keys, defaults) (v1.5.0)
+│   ├── storage.ts          # Storage utilities (type-safe helpers) (v1.5.0)
+│   ├── types.ts            # Type definitions
+│   └── debug.ts            # Debug logging utility
+├── __tests__/              # Unit tests (v1.5.0)
+│   ├── types.test.ts       # Tests for type definitions
+│   ├── constants.test.ts   # Tests for constants
+│   └── storage.test.ts     # Tests for storage utilities
 ├── dist/                    # Build output (gitignored)
-│   ├── content.js          # Compiled content script (~6 KiB minified)
-│   ├── background.js       # Compiled background worker (~3.25 KiB minified)
-│   ├── popup.js            # Compiled popup script (~2.28 KiB minified)
+│   ├── content.js          # Compiled content script (~3.59 KiB minified)
+│   ├── background.js       # Compiled background worker (~5.46 KiB minified)
+│   ├── popup.js            # Compiled popup script (~2.84 KiB minified)
 │   ├── popup.html          # Popup UI
 │   ├── manifest.json       # Copied manifest
 │   └── icons/              # Copied icon files
@@ -154,10 +202,10 @@ This Chrome extension tracks your Most Recently Used (MRU) tabs and displays col
 │   ├── icon48.png          # 48x48 extension icon
 │   └── icon128.png         # 128x128 extension icon
 ├── manifest.json           # Chrome extension manifest (v3)
-├── popup.html              # Extension popup HTML (with visual breadcrumb indicators)
 ├── package.json            # NPM dependencies and scripts
 ├── tsconfig.json           # TypeScript compiler configuration
 ├── webpack.config.cjs      # Webpack bundler configuration (CommonJS)
+├── jest.config.cjs         # Jest test configuration (v1.5.0)
 ├── eslint.config.js        # ESLint configuration (flat config)
 ├── .gitignore              # Git ignore rules
 ├── README.md               # User documentation
@@ -173,6 +221,7 @@ This Chrome extension tracks your Most Recently Used (MRU) tabs and displays col
 - **Chrome Storage API**: Persistent storage for user settings (chrome.storage.sync)
 - **Page Visibility API**: Browser API for detecting tab visibility changes
 - **MutationObserver API**: DOM API for monitoring title changes
+- **Jest**: Unit testing framework with TypeScript support (v1.5.0)
 
 ## Technical Design
 
@@ -481,11 +530,14 @@ titleObserver.observe(titleElement, {
 
 ### Build Commands
 
-- `npm run build` - Production build (minified, 2.17 KiB)
+- `npm run build` - Production build (minified)
 - `npm run dev` - Development build with watch mode (auto-rebuilds on file changes)
 - `npm run clean` - Remove dist/ directory
 - `npm run lint` - Check code quality with ESLint
 - `npm run lint:fix` - Auto-fix linting issues
+- `npm test` - Run unit tests (v1.5.0)
+- `npm run test:watch` - Run tests in watch mode (v1.5.0)
+- `npm run test:coverage` - Run tests with coverage report (v1.5.0)
 
 ### Making Changes
 
@@ -511,8 +563,9 @@ titleObserver.observe(titleElement, {
    - Developer workflow changes
    - Updated version number in status section
    - Add entry to "Recent Features & Changes"
-4. **Run `npm run build`** to regenerate `dist/manifest.json`
-5. **Run `npm run lint`** to check for code quality issues
+4. **Run `npm test`** to ensure all tests pass (v1.5.0+)
+5. **Run `npm run build`** to regenerate `dist/manifest.json`
+6. **Run `npm run lint`** to check for code quality issues
 
 > **Operational note:** Bump the version for every source code change so you can confirm the new build is loaded in Chrome. After bumping, run `npm run build` so `dist/manifest.json` carries the new number.
 
@@ -712,22 +765,25 @@ To bypass the hook in emergencies (not recommended): `git commit --no-verify`
 
 1. ~~**Configurable indicator count**~~ - ✅ Implemented in v1.3.33
 2. ~~**Clean popup UI**~~ - ✅ Implemented in v1.4.0 (removed debug report clutter)
-3. **Configurable colors/emoji** - Let users choose indicator symbols
-4. **More breadcrumb options** - Support 2, 3, or custom count
-5. **Options page** - Dedicated settings page (currently uses popup)
-6. **Keyboard shortcuts** - Quick toggle or jump to MRU positions
-7. **Color themes** - Different colors for different contexts
-8. **Tab grouping** - Integrate with Chrome's tab groups
-9. **Export/import settings** - Share configuration across installations
+3. ~~**Code refactoring**~~ - ✅ Implemented in v1.5.0 (constants, storage utilities, tests)
+4. **Configurable colors/emoji** - Let users choose indicator symbols
+5. **More breadcrumb options** - Support 2, 3, or custom count
+6. **Options page** - Dedicated settings page (currently uses popup)
+7. **Keyboard shortcuts** - Quick toggle or jump to MRU positions
+8. **Color themes** - Different colors for different contexts
+9. **Tab grouping** - Integrate with Chrome's tab groups
+10. **Export/import settings** - Share configuration across installations
 
 ### Code Improvements
 
 1. ✅ **ESLint** - Configured with TypeScript support (v1.1.0)
-2. **Unit tests** - Jest/Vitest for content script logic (not practical due to heavy DOM mocking)
-3. **E2E tests** - Puppeteer for browser automation (potential future enhancement)
-4. **CI/CD** - Automated builds and releases
-5. **Prettier** - Code formatting
-6. **Changelog** - Track version history
+2. ✅ **Unit tests** - Jest with 42 tests for utilities and constants (v1.5.0)
+3. ✅ **Centralized constants** - All storage keys and defaults in one file (v1.5.0)
+4. ✅ **Storage utilities** - Type-safe helpers for all storage operations (v1.5.0)
+5. **E2E tests** - Puppeteer for browser automation (potential future enhancement)
+6. **CI/CD** - Automated builds and releases
+7. **Prettier** - Code formatting
+8. **Changelog** - Track version history
 
 ## Browser Compatibility
 

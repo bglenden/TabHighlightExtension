@@ -2,7 +2,7 @@
 
 A lightweight Chrome extension that shows your Most Recently Used (MRU) tabs with colored position indicators, making it easy to navigate your browsing history.
 
-**Version**: 1.4.0 | **GitHub**: https://github.com/bglenden/TabHighlightExtension
+**Version**: 1.5.0 | **GitHub**: https://github.com/bglenden/TabHighlightExtension
 
 ## Why This Extension?
 

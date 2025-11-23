@@ -8,33 +8,24 @@
 import { initDebug, log } from "./debug";
 import { INDICATORS } from "./types";
 import type { MRUPosition, UpdatePositionMessage } from "./types";
+import { DEFAULT_BREADCRUMB_COUNT, STORAGE_KEYS } from "./constants";
+import { getBreadcrumbCount } from "./storage";
 
 // Initialize debug logging
 initDebug();
-
-// Storage key for breadcrumb count
-const STORAGE_KEY_BREADCRUMB_COUNT = "breadcrumbCount";
-const DEFAULT_BREADCRUMB_COUNT = 1;
 
 // Store the original title to restore it when tab loses MRU position
 let originalTitle: string = document.title;
 let currentPosition: MRUPosition = 0; // 0 = no position, 1-4 = MRU positions
 let extensionContextInvalidated: boolean = false; // Track if extension was reloaded
-let breadcrumbCount = DEFAULT_BREADCRUMB_COUNT;
+let breadcrumbCount: 1 | 4 = DEFAULT_BREADCRUMB_COUNT;
 
 /**
  * Load breadcrumb count setting from storage
  */
 async function loadBreadcrumbCount(): Promise<void> {
-  try {
-    const result = await chrome.storage.sync.get(STORAGE_KEY_BREADCRUMB_COUNT);
-    breadcrumbCount =
-      result[STORAGE_KEY_BREADCRUMB_COUNT] ?? DEFAULT_BREADCRUMB_COUNT;
-    log("[Tab Highlighter] Loaded breadcrumb count:", breadcrumbCount);
-  } catch (error) {
-    log("[Tab Highlighter] Failed to load breadcrumb count:", error);
-    breadcrumbCount = DEFAULT_BREADCRUMB_COUNT;
-  }
+  breadcrumbCount = await getBreadcrumbCount();
+  log("[Tab Highlighter] Loaded breadcrumb count:", breadcrumbCount);
 }
 
 /**
@@ -359,8 +350,8 @@ async function init(): Promise<void> {
  * Listen for storage changes to update breadcrumb count
  */
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === "sync" && changes[STORAGE_KEY_BREADCRUMB_COUNT]) {
-    const newCount = changes[STORAGE_KEY_BREADCRUMB_COUNT].newValue;
+  if (areaName === "sync" && changes[STORAGE_KEYS.BREADCRUMB_COUNT]) {
+    const newCount = changes[STORAGE_KEYS.BREADCRUMB_COUNT].newValue;
     log("[Tab Highlighter] Breadcrumb count changed to:", newCount);
     breadcrumbCount = newCount ?? DEFAULT_BREADCRUMB_COUNT;
 

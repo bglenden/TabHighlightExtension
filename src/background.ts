@@ -10,34 +10,26 @@ import type {
   ExtensionMessage,
   MRUPosition,
   UpdatePositionMessage,
+  BreadcrumbCountChangeMessage,
 } from "./types";
 import { MAX_MRU_STACK_SIZE } from "./types";
+import { DEFAULT_BREADCRUMB_COUNT } from "./constants";
+import { getBreadcrumbCount, setMruStack, getMruStack } from "./storage";
 
 // Initialize debug logging
 initDebug();
 
-// Storage key for breadcrumb count
-const STORAGE_KEY_BREADCRUMB_COUNT = "breadcrumbCount";
-const DEFAULT_BREADCRUMB_COUNT = 1;
-
 // MRU stack: most recent tab IDs in order [current, 1 back, 2 back, 3 back]
 let mruStack: number[] = [];
 let previousMruStack: number[] = [];
-let breadcrumbCount = DEFAULT_BREADCRUMB_COUNT;
+let breadcrumbCount: 1 | 4 = DEFAULT_BREADCRUMB_COUNT;
 
 /**
  * Load breadcrumb count setting from storage
  */
 async function loadBreadcrumbCount(): Promise<void> {
-  try {
-    const result = await chrome.storage.sync.get(STORAGE_KEY_BREADCRUMB_COUNT);
-    breadcrumbCount =
-      result[STORAGE_KEY_BREADCRUMB_COUNT] ?? DEFAULT_BREADCRUMB_COUNT;
-    log("[Tab Highlighter BG] Loaded breadcrumb count:", breadcrumbCount);
-  } catch (error) {
-    warn("[Tab Highlighter BG] Failed to load breadcrumb count:", error);
-    breadcrumbCount = DEFAULT_BREADCRUMB_COUNT;
-  }
+  breadcrumbCount = await getBreadcrumbCount();
+  log("[Tab Highlighter BG] Loaded breadcrumb count:", breadcrumbCount);
 }
 
 /**
@@ -45,7 +37,7 @@ async function loadBreadcrumbCount(): Promise<void> {
  */
 async function persistMRUStack(): Promise<void> {
   try {
-    await chrome.storage.local.set({ mruStack });
+    await setMruStack(mruStack);
     log("[Tab Highlighter BG] Persisted MRU stack:", mruStack);
   } catch (error) {
     warn("[Tab Highlighter BG] Failed to persist MRU stack:", error);
@@ -58,10 +50,7 @@ async function persistMRUStack(): Promise<void> {
  */
 async function restoreMRUStackFromStorage(): Promise<boolean> {
   try {
-    const result = await chrome.storage.local.get("mruStack");
-    const savedStack = Array.isArray(result.mruStack)
-      ? (result.mruStack as number[])
-      : [];
+    const savedStack = await getMruStack();
 
     if (savedStack.length === 0) {
       log("[Tab Highlighter BG] No saved MRU stack found in storage");
@@ -393,7 +382,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // Keep channel open for async response
   } else if (message.type === "BREADCRUMB_COUNT_CHANGE") {
     // Handle breadcrumb count change from popup
-    const newCount = message.count;
+    const changeMessage = message as BreadcrumbCountChangeMessage;
+    const newCount = changeMessage.count;
     log("[Tab Highlighter BG] Breadcrumb count changed to:", newCount);
     breadcrumbCount = newCount;
 

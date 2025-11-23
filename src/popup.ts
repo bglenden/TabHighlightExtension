@@ -3,14 +3,16 @@
  * Provides UI for reloading all tabs and toggling debug logging
  */
 
-import { initDebug, log, setDebugEnabled } from "./debug";
+import { initDebug, log } from "./debug";
+import type { BreadcrumbCountChangeMessage } from "./types";
+import {
+  getBreadcrumbCount,
+  setBreadcrumbCount,
+  setDebugEnabled,
+} from "./storage";
 
 // Initialize debug logging
 initDebug();
-
-// Storage key for breadcrumb count
-const STORAGE_KEY_BREADCRUMB_COUNT = "breadcrumbCount";
-const DEFAULT_BREADCRUMB_COUNT = 1;
 
 /**
  * Reloads all eligible tabs (excluding chrome:// and extension pages)
@@ -110,9 +112,7 @@ async function initBreadcrumbCount() {
   if (!breadcrumb1 || !breadcrumb4) return;
 
   // Load current breadcrumb count
-  const result = await chrome.storage.sync.get(STORAGE_KEY_BREADCRUMB_COUNT);
-  const breadcrumbCount =
-    result[STORAGE_KEY_BREADCRUMB_COUNT] ?? DEFAULT_BREADCRUMB_COUNT;
+  const breadcrumbCount = await getBreadcrumbCount();
 
   // Set the appropriate radio button
   if (breadcrumbCount === 4) {
@@ -122,16 +122,17 @@ async function initBreadcrumbCount() {
   }
 
   // Handle breadcrumb count changes
-  const handleBreadcrumbChange = async (count: number) => {
-    await chrome.storage.sync.set({ [STORAGE_KEY_BREADCRUMB_COUNT]: count });
+  const handleBreadcrumbChange = async (count: 1 | 4) => {
+    await setBreadcrumbCount(count);
     log(`[Tab Highlighter Popup] Breadcrumb count changed to ${count}`);
 
     // Notify background script of the change
     try {
-      await chrome.runtime.sendMessage({
+      const message: BreadcrumbCountChangeMessage = {
         type: "BREADCRUMB_COUNT_CHANGE",
         count: count,
-      });
+      };
+      await chrome.runtime.sendMessage(message);
     } catch (error) {
       log(`[Tab Highlighter Popup] Failed to notify background script:`, error);
     }
