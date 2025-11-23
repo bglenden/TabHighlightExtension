@@ -17,52 +17,59 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetch all history for changelog generation
+          fetch-depth: 0 # Fetch all history including tags
+          fetch-tags: true # Ensure tags are fetched
 
       - name: Get tag name
         id: tag
         run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-      - name: Extract version number
-        id: version
-        run: |
-          VERSION=$(echo ${{ steps.tag.outputs.TAG_NAME }} | sed 's/^v//')
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Get tag message
+      - name: Get tag annotation
         id: tag_data
         run: |
-          # Get the tag annotation (the message you wrote with -m)
-          TAG_MESSAGE=$(git tag -l --format='%(contents:subject)' ${{ steps.tag.outputs.TAG_NAME }})
+          # Fetch the tag object to ensure we have annotations
+          git fetch --tags --force
+
+          # Get the full tag message (subject + body)
+          TAG_SUBJECT=$(git tag -l --format='%(contents:subject)' ${{ steps.tag.outputs.TAG_NAME }})
           TAG_BODY=$(git tag -l --format='%(contents:body)' ${{ steps.tag.outputs.TAG_NAME }})
 
-          echo "TAG_SUBJECT=$TAG_MESSAGE" >> $GITHUB_OUTPUT
+          echo "TAG_SUBJECT=$TAG_SUBJECT" >> $GITHUB_OUTPUT
 
-          # Save multi-line body
-          echo "TAG_BODY<<EOF" >> $GITHUB_OUTPUT
-          echo "$TAG_BODY" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          # Handle multi-line body
+          {
+            echo "TAG_BODY<<EOF"
+            echo "$TAG_BODY"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
+          # Debug output
+          echo "Tag subject: $TAG_SUBJECT"
+          echo "Tag body length: ${#TAG_BODY}"
 
       - name: Create Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Use tag subject as title if present, otherwise use tag name
-          TITLE="${{ steps.tag_data.outputs.TAG_SUBJECT }}"
-          if [ -z "$TITLE" ]; then
+          TAG_SUBJECT="${{ steps.tag_data.outputs.TAG_SUBJECT }}"
+          TAG_BODY="${{ steps.tag_data.outputs.TAG_BODY }}"
+
+          # Use tag subject as title if it exists, otherwise use tag name
+          if [ -n "$TAG_SUBJECT" ]; then
+            TITLE="$TAG_SUBJECT"
+          else
             TITLE="${{ steps.tag.outputs.TAG_NAME }}"
           fi
 
-          # Use tag body as notes if present, otherwise generate from commits
-          BODY="${{ steps.tag_data.outputs.TAG_BODY }}"
-          if [ -z "$BODY" ]; then
+          # Use tag body as notes if it exists, otherwise generate from commits
+          if [ -n "$TAG_BODY" ]; then
             gh release create ${{ steps.tag.outputs.TAG_NAME }} \
               --title "$TITLE" \
-              --generate-notes \
+              --notes "$TAG_BODY" \
               --latest
           else
             gh release create ${{ steps.tag.outputs.TAG_NAME }} \
               --title "$TITLE" \
-              --notes "$BODY" \
+              --generate-notes \
               --latest
           fi
