@@ -1,0 +1,68 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*" # Triggers on version tags like v1.6.0, v2.0.0, etc.
+
+permissions:
+  contents: write # Required to create releases
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history for changelog generation
+
+      - name: Get tag name
+        id: tag
+        run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Extract version number
+        id: version
+        run: |
+          VERSION=$(echo ${{ steps.tag.outputs.TAG_NAME }} | sed 's/^v//')
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Get tag message
+        id: tag_data
+        run: |
+          # Get the tag annotation (the message you wrote with -m)
+          TAG_MESSAGE=$(git tag -l --format='%(contents:subject)' ${{ steps.tag.outputs.TAG_NAME }})
+          TAG_BODY=$(git tag -l --format='%(contents:body)' ${{ steps.tag.outputs.TAG_NAME }})
+
+          echo "TAG_SUBJECT=$TAG_MESSAGE" >> $GITHUB_OUTPUT
+
+          # Save multi-line body
+          echo "TAG_BODY<<EOF" >> $GITHUB_OUTPUT
+          echo "$TAG_BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Use tag subject as title if present, otherwise use tag name
+          TITLE="${{ steps.tag_data.outputs.TAG_SUBJECT }}"
+          if [ -z "$TITLE" ]; then
+            TITLE="${{ steps.tag.outputs.TAG_NAME }}"
+          fi
+
+          # Use tag body as notes if present, otherwise generate from commits
+          BODY="${{ steps.tag_data.outputs.TAG_BODY }}"
+          if [ -z "$BODY" ]; then
+            gh release create ${{ steps.tag.outputs.TAG_NAME }} \
+              --title "$TITLE" \
+              --generate-notes \
+              --latest
+          else
+            gh release create ${{ steps.tag.outputs.TAG_NAME }} \
+              --title "$TITLE" \
+              --notes "$BODY" \
+              --latest
+          fi

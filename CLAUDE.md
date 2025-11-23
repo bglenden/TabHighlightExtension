@@ -66,7 +66,7 @@ The tagged version `v1.3.19-last-with-favicons` is the last commit with full fav
 
 ### Recent Features & Changes
 
-**v1.5.0 - Code Refactoring & Test Infrastructure + Semantic Versioning Adoption (2025-11-23)**
+**v1.5.0 - Code Refactoring, Test Infrastructure, Semantic Versioning & Automated Releases (2025-11-23)**
 
 - **Feature**: Major internal refactoring for improved maintainability and code quality
 - **Versioning Change**: Adopted semantic versioning (MAJOR.MINOR.PATCH) going forward
@@ -95,9 +95,11 @@ The tagged version `v1.3.19-last-with-favicons` is the last commit with full fav
   - Moved `popup.html` to `src/` directory for consistency
   - All source files now in `src/` folder
   - Added `coverage/` to `.gitignore`
-- **Release Tagging**:
+- **Release Tagging & Automation**:
   - Tagged historical releases: v1.1.0, v1.3.0, v1.3.33, v1.4.0, v1.5.0
   - GitHub releases page now shows major milestones
+  - Added GitHub Actions workflow for automatic release creation
+  - Releases auto-created when version tags are pushed
 - **Benefits**:
   - Easier to maintain and extend
   - Reduced chance of bugs from inconsistent constants
@@ -548,6 +550,15 @@ titleObserver.observe(titleElement, {
 - `npm run test:watch` - Run tests in watch mode (v1.5.0)
 - `npm run test:coverage` - Run tests with coverage report (v1.5.0)
 
+### CI/CD
+
+**Automated Release Creation:**
+
+- `.github/workflows/release.yml` - Automatically creates GitHub releases when version tags are pushed
+- Triggered by: `git push --tags` (for tags matching `v*.*.*` pattern)
+- Uses tag annotation message as release notes
+- No manual intervention required
+
 ### Making Changes
 
 1. **Edit source files** in `src/` directory
@@ -600,8 +611,9 @@ git commit -m "chore: Release v1.6.0"
 # 5. Push with tags
 git push && git push --tags
 
-# 6. Create GitHub release (optional)
-gh release create v1.6.0 --generate-notes
+# 6. GitHub Release is created automatically!
+# The .github/workflows/release.yml workflow triggers on tag push
+# and creates the release using your tag message
 ```
 
 **Pre-Commit Hook (Automatic):**
@@ -618,7 +630,7 @@ When releasing a new version:
 1. **Update README.md** with user-facing changes
 2. **Update CLAUDE.md** status section and "Recent Features & Changes"
 3. **Run `npm run build`** to regenerate `dist/manifest.json`
-4. **Create descriptive Git tag** with release notes
+4. **Create descriptive Git tag** with release notes (triggers automatic GitHub release creation)
 
 **Why This Workflow:**
 
@@ -626,7 +638,8 @@ When releasing a new version:
 - ✅ Flexible - commit freely, release deliberately
 - ✅ Clean history - tags mark releases
 - ✅ User-friendly - version numbers have meaning
-- ✅ GitHub integration - releases page shows milestones
+- ✅ GitHub integration - releases automatically created from tags
+- ✅ Automated workflow - no manual release creation needed
 
 ### Git Pre-commit Hook
 
@@ -679,18 +692,31 @@ To bypass the hook in emergencies (not recommended): `git commit --no-verify`
 - v1.4.0 - Cleaner popup UI
 - v1.5.0 - Major refactoring and test infrastructure
 
-**Creating GitHub releases:**
+**Automated GitHub Releases:**
+
+GitHub releases are automatically created when you push version tags!
+
+**How it works:**
+
+- `.github/workflows/release.yml` workflow triggers on any `v*.*.*` tag push
+- Uses your tag annotation message as release notes
+- Marks release as "latest" automatically
+- No manual intervention needed!
+
+**What gets used:**
+
+- Tag subject line → Release title
+- Tag body → Release notes
+- If no tag message, auto-generates notes from commits
+
+**Manual creation (if needed):**
 
 ```bash
-# After pushing tags
+# Only needed if automation fails
 gh release create v1.6.0 --generate-notes
 
-# Or manually via GitHub web UI
-# 1. Go to https://github.com/bglenden/TabHighlightExtension/releases
-# 2. Click "Draft a new release"
-# 3. Select tag
-# 4. Generate release notes
-# 5. Publish
+# Or via GitHub web UI:
+# https://github.com/bglenden/TabHighlightExtension/releases/new
 ```
 
 ### Testing Strategy
