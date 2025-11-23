@@ -1,10 +1,10 @@
 # Active Tab Highlighter - Technical Documentation
 
-## Current Status (v1.5.0)
+## Current Status (v1.5.1)
 
 ### Production Release ✅
 
-**Version**: 1.5.0 (Production)
+**Version**: 1.5.1 (Production)
 **Status**: MRU breadcrumb trail with configurable count - stable, refactored codebase
 **Release Date**: 2025-11-23
 **GitHub**: https://github.com/bglenden/TabHighlightExtension
@@ -65,6 +65,21 @@ The tagged version `v1.3.19-last-with-favicons` is the last commit with full fav
 - MutationObserver for favicon changes
 
 ### Recent Features & Changes
+
+**v1.5.1 - Enhanced Pre-commit Hook (2025-01-23)**
+
+- **Feature**: Pre-commit hook now runs tests automatically before allowing commits
+- **Quality Gate**: Added `npm test` to pre-commit hook alongside existing lint check
+- **Developer Experience**: Ensures all commits have passing tests, catching issues earlier
+- **Implementation**:
+  - Updated `.git/hooks/pre-commit` to run test suite after lint check
+  - Updated documentation with new hook setup instructions
+  - Added `coverage/` to `.gitignore` to exclude test coverage reports
+- **Benefits**:
+  - Prevents committing broken code
+  - Enforces test-driven development workflow
+  - Catches regressions before they enter version control
+- **Note**: Hook setup still required for each clone (Git hooks are not committed)
 
 **v1.5.0 - Code Refactoring & Test Infrastructure (2025-11-23)**
 
@@ -563,9 +578,14 @@ titleObserver.observe(titleElement, {
    - Developer workflow changes
    - Updated version number in status section
    - Add entry to "Recent Features & Changes"
-4. **Run `npm test`** to ensure all tests pass (v1.5.0+)
-5. **Run `npm run build`** to regenerate `dist/manifest.json`
-6. **Run `npm run lint`** to check for code quality issues
+4. **Run `npm run build`** to regenerate `dist/manifest.json`
+
+**The pre-commit hook will automatically enforce:**
+
+- Lint check (`npm run lint`)
+- Test suite (`npm test`)
+- Version bump in `package.json`
+- Version consistency between `package.json` and `manifest.json`
 
 > **Operational note:** Bump the version for every source code change so you can confirm the new build is loaded in Chrome. After bumping, run `npm run build` so `dist/manifest.json` carries the new number.
 
@@ -597,11 +617,12 @@ git commit -m "v1.3.12: Fix stale indicators on chrome:// pages"
 
 ### Git Pre-commit Hook
 
-A pre-commit hook is configured to enforce version bumps and run lint before every commit:
+A pre-commit hook is configured to enforce version bumps, run lint, and run tests before every commit:
 
 - Requires a staged `package.json` version change.
 - Requires `manifest.json` version to match `package.json`.
 - Runs `npm run lint` and blocks on failures.
+- Runs `npm test` and blocks on failures.
 
 **Setup (required for each clone):**
 
@@ -613,6 +634,7 @@ bash -c 'cat > .git/hooks/pre-commit << \"EOF\"
 # 1) package.json must have a staged version change
 # 2) manifest.json version must match package.json
 # 3) Lint must pass
+# 4) Tests must pass
 
 set -e
 
@@ -636,6 +658,9 @@ fi
 
 echo \"Running lint check...\"
 npm run lint
+
+echo \"Running tests...\"
+npm test
 EOF
 chmod +x .git/hooks/pre-commit'
 ```
