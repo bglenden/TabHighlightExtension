@@ -30,46 +30,51 @@ jobs:
           # Fetch the tag object to ensure we have annotations
           git fetch --tags --force
 
-          # Get the full tag message (subject + body)
-          TAG_SUBJECT=$(git tag -l --format='%(contents:subject)' ${{ steps.tag.outputs.TAG_NAME }})
-          TAG_BODY=$(git tag -l --format='%(contents:body)' ${{ steps.tag.outputs.TAG_NAME }})
+          # Get the tag message and save to files to avoid shell escaping issues
+          git tag -l --format='%(contents:subject)' ${{ steps.tag.outputs.TAG_NAME }} > /tmp/tag_subject.txt
+          git tag -l --format='%(contents:body)' ${{ steps.tag.outputs.TAG_NAME }} > /tmp/tag_body.txt
 
+          # Read and set outputs
+          TAG_SUBJECT=$(cat /tmp/tag_subject.txt)
           echo "TAG_SUBJECT=$TAG_SUBJECT" >> $GITHUB_OUTPUT
 
-          # Handle multi-line body
-          {
-            echo "TAG_BODY<<EOF"
-            echo "$TAG_BODY"
-            echo "EOF"
-          } >> $GITHUB_OUTPUT
+          # Check if body exists and is non-empty
+          if [ -s /tmp/tag_body.txt ]; then
+            echo "HAS_BODY=true" >> $GITHUB_OUTPUT
+          else
+            echo "HAS_BODY=false" >> $GITHUB_OUTPUT
+          fi
 
           # Debug output
           echo "Tag subject: $TAG_SUBJECT"
-          echo "Tag body length: ${#TAG_BODY}"
+          echo "Tag body file size: $(wc -c < /tmp/tag_body.txt) bytes"
 
-      - name: Create Release
+      - name: Create Release with tag message
+        if: steps.tag_data.outputs.HAS_BODY == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG_SUBJECT="${{ steps.tag_data.outputs.TAG_SUBJECT }}"
-          TAG_BODY="${{ steps.tag_data.outputs.TAG_BODY }}"
-
-          # Use tag subject as title if it exists, otherwise use tag name
-          if [ -n "$TAG_SUBJECT" ]; then
-            TITLE="$TAG_SUBJECT"
-          else
+          TITLE="${{ steps.tag_data.outputs.TAG_SUBJECT }}"
+          if [ -z "$TITLE" ]; then
             TITLE="${{ steps.tag.outputs.TAG_NAME }}"
           fi
 
-          # Use tag body as notes if it exists, otherwise generate from commits
-          if [ -n "$TAG_BODY" ]; then
-            gh release create ${{ steps.tag.outputs.TAG_NAME }} \
-              --title "$TITLE" \
-              --notes "$TAG_BODY" \
-              --latest
-          else
-            gh release create ${{ steps.tag.outputs.TAG_NAME }} \
-              --title "$TITLE" \
-              --generate-notes \
-              --latest
+          gh release create ${{ steps.tag.outputs.TAG_NAME }} \
+            --title "$TITLE" \
+            --notes-file /tmp/tag_body.txt \
+            --latest
+
+      - name: Create Release with auto-generated notes
+        if: steps.tag_data.outputs.HAS_BODY == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TITLE="${{ steps.tag_data.outputs.TAG_SUBJECT }}"
+          if [ -z "$TITLE" ]; then
+            TITLE="${{ steps.tag.outputs.TAG_NAME }}"
           fi
+
+          gh release create ${{ steps.tag.outputs.TAG_NAME }} \
+            --title "$TITLE" \
+            --generate-notes \
+            --latest
