@@ -27,3 +27,10 @@ AGENTS.md
 # AI Assistant configs
 /.claude
 /.gemini/
+
+# Analysis and planning documents (one-time activities)
+/CODE_REVIEW.md
+/TESTING_ANALYSIS.md
+/TESTING_CHECKLIST.md
+/ARCHITECTURE.md
+/REFACTORING_PLAN.md
