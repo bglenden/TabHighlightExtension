@@ -1,10 +1,10 @@
 # Active Tab Highlighter - Technical Documentation
 
-## Current Status (v1.5.1)
+## Current Status (v1.5.2)
 
 ### Production Release ✅
 
-**Version**: 1.5.1 (Production)
+**Version**: 1.5.2 (Production)
 **Status**: MRU breadcrumb trail with configurable count - stable, refactored codebase
 **Release Date**: 2025-11-23
 **GitHub**: https://github.com/bglenden/TabHighlightExtension
@@ -65,6 +65,23 @@ The tagged version `v1.3.19-last-with-favicons` is the last commit with full fav
 - MutationObserver for favicon changes
 
 ### Recent Features & Changes
+
+**v1.5.2 - Tag Enforcement on Version Changes (2025-01-23)**
+
+- **Feature**: Pre-commit hook now requires Git tags when version numbers change
+- **Quality Gate**: Prevents forgetting to tag releases
+- **Developer Experience**: Automatic reminder to create release tag with descriptive message
+- **Implementation**:
+  - Hook detects version changes in `package.json`
+  - Blocks commit if corresponding tag doesn't exist
+  - Provides clear instructions for creating the required tag
+  - Allows commits without version changes to proceed normally
+- **Benefits**:
+  - Never forget to tag a release
+  - Enforces semantic versioning discipline
+  - Git history and tags stay in sync
+  - Clear release points for users and collaborators
+- **Workflow**: Version bump → Create tag → Commit succeeds
 
 **v1.5.1 - Enhanced Pre-commit Hook (2025-01-23)**
 
@@ -578,14 +595,15 @@ titleObserver.observe(titleElement, {
    - Developer workflow changes
    - Updated version number in status section
    - Add entry to "Recent Features & Changes"
-4. **Run `npm run build`** to regenerate `dist/manifest.json`
+4. **Bump version** in `package.json` (for releases only)
+5. **Create Git tag** for the new version (required by pre-commit hook)
+6. **Run `npm run build`** to regenerate `dist/manifest.json`
 
 **The pre-commit hook will automatically enforce:**
 
 - Lint check (`npm run lint`)
 - Test suite (`npm test`)
-- Version bump in `package.json`
-- Version consistency between `package.json` and `manifest.json`
+- Git tag exists if version was changed (prevents forgetting to tag releases)
 
 > **Operational note:** Bump the version for every source code change so you can confirm the new build is loaded in Chrome. After bumping, run `npm run build` so `dist/manifest.json` carries the new number.
 
@@ -597,11 +615,18 @@ Version numbering follows semantic versioning (MAJOR.MINOR.PATCH):
 - **MINOR** (1.3.0 → 1.4.0): New features, significant enhancements
 - **MAJOR** (1.0.0 → 2.0.0): Breaking changes, major rewrites
 
-**Before every commit:**
+**Before every release commit:**
 
-1. Update `version` field in `package.json`
-2. Run `npm run build` to regenerate `dist/manifest.json` with new version
-3. Commit with descriptive message including version number
+1. Update `version` field in `package.json` and `manifest.json`
+2. Create Git tag: `git tag -a v1.x.x -m "Release v1.x.x: Description"`
+3. Run `npm run build` to regenerate `dist/manifest.json`
+4. Commit with descriptive message
+5. Push with tags: `git push && git push --tags`
+
+**For development commits (no version change):**
+
+1. Make changes
+2. Commit normally (hook allows commits without version changes)
 
 > **Why the extra build?**  
 > Chrome loads the unpacked extension from `dist/`, so the extension version Chrome displays always comes from `dist/manifest.json`. That file is copied from the root `manifest.json` during `npm run build`. If you forget to rebuild after bumping the version, Chrome will keep showing the old number from the previous build.
@@ -617,12 +642,11 @@ git commit -m "v1.3.12: Fix stale indicators on chrome:// pages"
 
 ### Git Pre-commit Hook
 
-A pre-commit hook is configured to enforce version bumps, run lint, and run tests before every commit:
+A pre-commit hook is configured to enforce quality gates and release tagging:
 
-- Requires a staged `package.json` version change.
-- Requires `manifest.json` version to match `package.json`.
 - Runs `npm run lint` and blocks on failures.
 - Runs `npm test` and blocks on failures.
+- If `package.json` version changed, requires a Git tag for that version to exist.
 
 **Setup (required for each clone):**
 
@@ -630,37 +654,52 @@ A pre-commit hook is configured to enforce version bumps, run lint, and run test
 bash -c 'cat > .git/hooks/pre-commit << \"EOF\"
 #!/bin/sh
 
-# Enforce version bump and consistency before committing.
-# 1) package.json must have a staged version change
-# 2) manifest.json version must match package.json
-# 3) Lint must pass
-# 4) Tests must pass
+# Enforce quality and tagging rules before committing.
+# 1) Lint must pass
+# 2) Tests must pass
+# 3) If version changed, a tag for that version must exist or be created
 
 set -e
-
-if ! git diff --cached -- package.json | grep -q \"\\\"version\\\"\"; then
-  echo \"Version bump required: stage a change to package.json version.\"
-  exit 1
-fi
-
-pkg_ver=$(node -e \"console.log(require(\\\"./package.json\\\").version)\" 2>/dev/null || true)
-manifest_ver=$(node -e \"console.log(require(\\\"./manifest.json\\\").version)\" 2>/dev/null || true)
-
-if [ -z \"$pkg_ver\" ] || [ -z \"$manifest_ver\" ]; then
-  echo \"Unable to read versions from package.json/manifest.json.\"
-  exit 1
-fi
-
-if [ \"$pkg_ver\" != \"$manifest_ver\" ]; then
-  echo \"Version mismatch: package.json ($pkg_ver) != manifest.json ($manifest_ver)\"
-  exit 1
-fi
 
 echo \"Running lint check...\"
 npm run lint
 
 echo \"Running tests...\"
 npm test
+
+# Check if package.json version changed
+if git diff --cached -- package.json | grep -q '\"version\"'; then
+  # Get new version from package.json
+  new_version=$(node -e \"console.log(require('./package.json').version)\" 2>/dev/null)
+
+  if [ -z \"$new_version\" ]; then
+    echo \"ERROR: Unable to read version from package.json\"
+    exit 1
+  fi
+
+  # Check if tag exists for this version
+  if ! git rev-parse \"v$new_version\" >/dev/null 2>&1; then
+    echo \"\"
+    echo \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\"
+    echo \"⚠️  VERSION CHANGED: v$new_version\"
+    echo \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\"
+    echo \"\"
+    echo \"A version change requires a Git tag.\"
+    echo \"\"
+    echo \"Please create a tag for this release:\"
+    echo \"\"
+    echo \"  git tag -a v$new_version -m \\\"Release v$new_version: <description>\\\"\"
+    echo \"\"
+    echo \"Or abort this commit and bump version later.\"
+    echo \"\"
+    echo \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\"
+    exit 1
+  fi
+
+  echo \"✓ Version tag v$new_version exists\"
+fi
+
+echo \"✓ All pre-commit checks passed\"
 EOF
 chmod +x .git/hooks/pre-commit'
 ```
@@ -862,4 +901,3 @@ See the **Debugging** section under "Development Workflow" for detailed troubles
 ## License
 
 MIT License - Free to use, modify, and distribute
-# Test change
